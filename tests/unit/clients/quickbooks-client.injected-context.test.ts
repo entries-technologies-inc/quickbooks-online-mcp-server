@@ -50,6 +50,63 @@ function createDeferred() {
 }
 
 describe("runWithQuickbooksContext", () => {
+  it("returns synchronous callback values without losing injected context", () => {
+    const quickbooks = { marker: "sync" };
+
+    const result = runWithQuickbooksContext(
+      {
+        quickbooks: quickbooks as never,
+        accessToken: "sync-access-token",
+        realmId: "sync-realm",
+        isSandbox: true,
+      },
+      () => "sync-result",
+    );
+
+    expect(result).toBe("sync-result");
+  });
+
+  it("restores the outer injected context after a nested context exits", async () => {
+    const outerQuickbooks = { marker: "outer" };
+    const innerQuickbooks = { marker: "inner" };
+
+    await runWithQuickbooksContext(
+      {
+        quickbooks: outerQuickbooks as never,
+        accessToken: "outer-access-token",
+        realmId: "outer-realm",
+        isSandbox: true,
+      },
+      async () => {
+        expect(await QuickbooksClient.getInstance()).toBe(outerQuickbooks);
+
+        await runWithQuickbooksContext(
+          {
+            quickbooks: innerQuickbooks as never,
+            accessToken: "inner-access-token",
+            realmId: "inner-realm",
+            isSandbox: false,
+          },
+          async () => {
+            expect(await QuickbooksClient.getInstance()).toBe(innerQuickbooks);
+            expect(await QuickbooksClient.getAuthCredentials()).toEqual({
+              accessToken: "inner-access-token",
+              realmId: "inner-realm",
+              isSandbox: false,
+            });
+          },
+        );
+
+        expect(await QuickbooksClient.getInstance()).toBe(outerQuickbooks);
+        expect(await QuickbooksClient.getAuthCredentials()).toEqual({
+          accessToken: "outer-access-token",
+          realmId: "outer-realm",
+          isSandbox: true,
+        });
+      },
+    );
+  });
+
   it("keeps injected QuickBooks instances and credentials isolated across interleaved async work", async () => {
     const firstCanContinue = createDeferred();
     const secondStarted = createDeferred();
@@ -221,6 +278,32 @@ describe("runWithQuickbooksContext", () => {
       "second-vendor",
       expect.any(Function),
     );
+  });
+
+  it("formats handler errors from the injected QuickBooks instance", async () => {
+    const quickbooks = {
+      getVendor: jest.fn(
+        (_id: string, callback: (err: Error, vendor: null) => void) => {
+          callback(new Error("vendor lookup failed"), null);
+        },
+      ),
+    };
+
+    const result = await runWithQuickbooksContext(
+      {
+        quickbooks: quickbooks as never,
+        accessToken: "error-access-token",
+        realmId: "error-realm",
+        isSandbox: true,
+      },
+      () => getQuickbooksVendor("missing-vendor"),
+    );
+
+    expect(result).toEqual({
+      result: null,
+      isError: true,
+      error: "Error: vendor lookup failed",
+    });
   });
 });
 
