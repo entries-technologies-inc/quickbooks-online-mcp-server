@@ -37,6 +37,8 @@ jest.unstable_mockModule("fs", () => ({
 
 const { QuickbooksClient, runWithQuickbooksContext } =
   await import("../../../src/clients/quickbooks-client");
+const { getQuickbooksVendor } =
+  await import("../../../src/handlers/get-quickbooks-vendor.handler");
 
 function createDeferred() {
   let resolve!: () => void;
@@ -113,4 +115,129 @@ describe("runWithQuickbooksContext", () => {
 
     await Promise.all([firstRun, secondRun]);
   });
+
+  it("keeps many concurrent injected contexts isolated across repeated awaits", async () => {
+    const contextCount = 50;
+    const iterationsPerContext = 6;
+    const readyCount = createCounter(contextCount);
+    const releaseAll = createDeferred();
+
+    const runs = Array.from({ length: contextCount }, async (_, index) => {
+      const quickbooks = { marker: `quickbooks-${index}` };
+      const isSandbox = index % 2 === 0;
+
+      return runWithQuickbooksContext(
+        {
+          quickbooks: quickbooks as never,
+          accessToken: `access-token-${index}`,
+          realmId: `realm-${index}`,
+          isSandbox,
+        },
+        async () => {
+          readyCount.increment();
+          await releaseAll.promise;
+
+          for (
+            let iteration = 0;
+            iteration < iterationsPerContext;
+            iteration += 1
+          ) {
+            expect(await QuickbooksClient.getInstance()).toBe(quickbooks);
+            expect(await QuickbooksClient.getAuthCredentials()).toEqual({
+              accessToken: `access-token-${index}`,
+              realmId: `realm-${index}`,
+              isSandbox,
+            });
+
+            await new Promise((resolve) => setImmediate(resolve));
+          }
+        },
+      );
+    });
+
+    await readyCount.promise;
+    releaseAll.resolve();
+    await Promise.all(runs);
+  });
+
+  it("keeps real handler calls isolated across concurrent injected contexts", async () => {
+    const firstCanCallback = createDeferred();
+    const secondCanCallback = createDeferred();
+    const firstQuickbooks = {
+      getVendor: jest.fn(
+        (_id: string, callback: (err: null, vendor: unknown) => void) => {
+          void firstCanCallback.promise.then(() => {
+            callback(null, { Id: "first-vendor", source: "first" });
+          });
+        },
+      ),
+    };
+    const secondQuickbooks = {
+      getVendor: jest.fn(
+        (_id: string, callback: (err: null, vendor: unknown) => void) => {
+          void secondCanCallback.promise.then(() => {
+            callback(null, { Id: "second-vendor", source: "second" });
+          });
+        },
+      ),
+    };
+
+    const firstRun = runWithQuickbooksContext(
+      {
+        quickbooks: firstQuickbooks as never,
+        accessToken: "first-access-token",
+        realmId: "first-realm",
+        isSandbox: true,
+      },
+      () => getQuickbooksVendor("first-vendor"),
+    );
+    const secondRun = runWithQuickbooksContext(
+      {
+        quickbooks: secondQuickbooks as never,
+        accessToken: "second-access-token",
+        realmId: "second-realm",
+        isSandbox: false,
+      },
+      () => getQuickbooksVendor("second-vendor"),
+    );
+
+    await new Promise((resolve) => setImmediate(resolve));
+    secondCanCallback.resolve();
+    firstCanCallback.resolve();
+
+    await expect(firstRun).resolves.toMatchObject({
+      isError: false,
+      result: { Id: "first-vendor", source: "first" },
+    });
+    await expect(secondRun).resolves.toMatchObject({
+      isError: false,
+      result: { Id: "second-vendor", source: "second" },
+    });
+    expect(firstQuickbooks.getVendor).toHaveBeenCalledWith(
+      "first-vendor",
+      expect.any(Function),
+    );
+    expect(secondQuickbooks.getVendor).toHaveBeenCalledWith(
+      "second-vendor",
+      expect.any(Function),
+    );
+  });
 });
+
+function createCounter(target: number) {
+  let count = 0;
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return {
+    promise,
+    increment: () => {
+      count += 1;
+      if (count === target) {
+        resolve();
+      }
+    },
+  };
+}
