@@ -5,7 +5,7 @@
 **A comprehensive Model Context Protocol (MCP) server for QuickBooks Online**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tools](https://img.shields.io/badge/Tools-144-green.svg)](#available-tools)
+[![Tools](https://img.shields.io/badge/Tools-145-green.svg)](#available-tools)
 [![Entities](https://img.shields.io/badge/Entities-29-orange.svg)](#entities)
 [![Reports](https://img.shields.io/badge/Reports-11-purple.svg)](#reports)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](#testing)
@@ -23,7 +23,7 @@ This MCP server provides complete QuickBooks Online API integration for Claude C
 
 ### Key Features
 
-- **144 Total Tools** - Complete coverage of QuickBooks Online API
+- **145 Total Tools** - Complete coverage of QuickBooks Online API
 - **29 Entity Types** - Full CRUD operations (Create, Read, Update, Delete, Search)
 - **11 Financial Reports** - Balance Sheet, P&L, Cash Flow, and more
 - **OAuth 2.0 Authentication** - Secure token-based authentication
@@ -326,6 +326,7 @@ Complete CRUD operations are available for all entity types:
 | `get_payment_method` | Get payment method by ID |
 | `update_payment_method` | Update payment method |
 | `search_payment_methods` | Search payment methods |
+| `get_preferences` | Get company accounting and feature preferences |
 
 </details>
 
