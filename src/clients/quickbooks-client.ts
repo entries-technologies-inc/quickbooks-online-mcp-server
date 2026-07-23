@@ -9,6 +9,18 @@ import open from 'open';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Where the server reads .env at startup and persists rotated refresh tokens.
+// Defaults to the installed module's ../../.env (dist/clients/ -> package root)
+// so a host-spawned server with an unrelated cwd still finds it. Override with
+// QUICKBOOKS_TOKEN_STORE_PATH (an absolute path) to point at a WRITABLE location.
+// This is required whenever the module itself lives on a read-only filesystem —
+// containers with a read-only root, Nix/immutable installs (see #63, where the
+// default path can't be written) — and lets a per-tenant host keep each
+// connection's rotated token in its own isolated path.
+const TOKEN_STORE_PATH =
+  process.env.QUICKBOOKS_TOKEN_STORE_PATH?.trim() ||
+  path.join(__dirname, '..', '..', '.env');
+
 // Resolve .env relative to the installed module (../../.env from dist/clients/).
 // This matters when the MCP server is spawned by a host (e.g. Claude Desktop,
 // Claude Code, Cursor) whose working directory is not the project root —
@@ -18,7 +30,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // placeholders a host app (e.g. Claude Desktop) may inject via its env config.
 // This prevents the server from starting with blank REFRESH_TOKEN / REALM_ID
 // even when the host config has those keys set to "".
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env'), override: true });
+dotenv.config({ path: TOKEN_STORE_PATH, override: true });
 
 // Register once at module level — registering inside startOAuthFlow() would
 // accumulate duplicate handlers on every OAuth call.
@@ -248,7 +260,7 @@ export class QuickbooksClient {
   }
 
   private saveTokensToEnv(): void {
-    const tokenPath = path.join(__dirname, '..', '..', '.env');
+    const tokenPath = TOKEN_STORE_PATH;
     const envContent = fs.existsSync(tokenPath) ? fs.readFileSync(tokenPath, 'utf-8') : '';
     const envLines = envContent.split('\n');
 

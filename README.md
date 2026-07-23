@@ -75,6 +75,8 @@ QUICKBOOKS_REALM_ID=your_realm_id
 
 `.env` is gitignored so your real credentials stay local.
 
+> **Read-only or containerized installs:** the server reads `.env` at startup and writes the rotated refresh token back to it on each refresh. When the installed module sits on a **read-only filesystem** (a container with a read-only root, an immutable/Nix install), set `QUICKBOOKS_TOKEN_STORE_PATH` to an absolute, writable path for both operations. A per-tenant host can also point each connection at its own isolated token file this way.
+
 ### Claude Code Integration
 
 Add to your Claude Code MCP configuration:
