@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-export interface ToolDefinition<T extends z.ZodType<any, any>> {
+export interface ToolDefinition<T extends z.ZodType> {
   name: string;
   description: string;
   schema: T;

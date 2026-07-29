@@ -21,12 +21,14 @@
         "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.6.0",
+        "@modelcontextprotocol/sdk": "^1.30.0",
         "dotenv": "^16.4.7",
         "intuit-oauth": "^4.0.0",
         "node-quickbooks": "^2.0.43",
-        "open": "^9.1.0",
-        "zod": "^3.24.2"
+        "open": "^9.1.0"
+    },
+    "peerDependencies": {
+        "zod": "^4.0.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.22.0",
@@ -41,6 +43,7 @@
         "shx": "^0.3.4",
         "ts-jest": "^29.4.6",
         "typescript": "^5.8.2",
-        "typescript-eslint": "^8.26.1"
+        "typescript-eslint": "^8.26.1",
+        "zod": "4.3.6"
     }
 }
