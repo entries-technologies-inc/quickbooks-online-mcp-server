@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "create_term";
 const toolDescription = "Create a new payment term in QuickBooks Online (e.g., Net 30, Due on Receipt).";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   name: z.string().min(1).describe("Term name (e.g., 'Net 30')"),
   due_days: z.number().optional().describe("Number of days until payment is due"),
   discount_days: z.number().optional().describe("Days to qualify for early payment discount"),

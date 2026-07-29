@@ -6,7 +6,7 @@ const toolName = "create_attachable";
 const toolDescription =
   "Create an attachable (file attachment) in QuickBooks Online. File content can come from file_path (a file on the machine running this server — preferred for local files of any size), file_url (an https URL the server downloads), or base64_content (inline bytes — only practical for small files). Precedence: file_url/file_path (mutually exclusive) win over base64_content. With no file source, creates a metadata-only attachment record. Max file size 100 MB (QBO limit).";
 
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   file_name: z.string().min(1).describe("File name including extension (e.g., 'receipt.pdf')."),
   note: z.string().optional().describe("Optional note describing the attachment."),
   category: z.string().optional().describe("Optional QBO attachment category."),
@@ -35,7 +35,7 @@ const toolSchema = z.object({
       "Base64-encoded file bytes, uploaded as multipart/form-data. Only practical for small files (a few KB) — prefer file_path or file_url for real documents. Ignored when file_path or file_url is provided. Maximum 100 MB decoded. Omit all three sources to create a metadata-only attachment record."
     ),
   attachable_ref: z
-    .object({
+    .strictObject({
       entity_ref_type: z.string().describe("Entity type (e.g., 'Invoice', 'Bill', 'Purchase')."),
       entity_ref_value: z.string().describe("Entity ID to attach to."),
       include_on_send: z

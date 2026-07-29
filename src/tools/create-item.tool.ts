@@ -5,7 +5,7 @@ import { z } from "zod";
 const toolName = "create_item";
 const toolDescription = "Create an item in QuickBooks Online.";
 
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   name: z.string().min(1),
   type: z.string().min(1),
   income_account_ref: z.string().min(1),

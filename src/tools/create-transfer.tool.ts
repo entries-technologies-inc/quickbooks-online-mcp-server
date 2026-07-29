@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "create_transfer";
 const toolDescription = "Create a bank transfer between accounts in QuickBooks Online.";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   from_account_ref: z.string().min(1).describe("Source bank account ID"),
   to_account_ref: z.string().min(1).describe("Destination bank account ID"),
   amount: z.number().positive().describe("Transfer amount"),

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "update_department";
 const toolDescription = "Update an existing department in QuickBooks Online.";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Department ID"),
   sync_token: z.string().min(1).describe("Sync token for concurrency"),
   name: z.string().optional().describe("Updated department name"),

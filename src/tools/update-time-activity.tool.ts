@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "update_time_activity";
 const toolDescription = "Update a time activity in QuickBooks Online.";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Time Activity ID"),
   sync_token: z.string().min(1).describe("Sync token"),
   hours: z.number().optional().describe("Hours worked"),

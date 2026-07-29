@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "update_transfer";
 const toolDescription = "Update a transfer in QuickBooks Online.";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Transfer ID"),
   sync_token: z.string().min(1).describe("Sync token"),
   from_account_ref: z.string().optional().describe("Source account ID"),
