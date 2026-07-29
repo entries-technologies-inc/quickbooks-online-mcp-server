@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "update_payment_method";
 const toolDescription = "Update an existing payment method in QuickBooks Online.";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Payment method ID"),
   sync_token: z.string().min(1).describe("Sync token for concurrency"),
   name: z.string().optional().describe("Updated payment method name"),

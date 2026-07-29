@@ -5,7 +5,7 @@ import { z } from "zod";
 const toolName = "update_purchase_order";
 const toolDescription = "Update an existing purchase order in QuickBooks Online.";
 
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Purchase Order ID"),
   sync_token: z.string().min(1).describe("Sync token"),
   vendor_ref: z.string().optional().describe("Vendor ID"),

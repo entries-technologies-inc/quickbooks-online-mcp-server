@@ -5,7 +5,7 @@ import { z } from "zod";
 const toolName = "update_sales_receipt";
 const toolDescription = "Update an existing sales receipt in QuickBooks Online.";
 
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Sales Receipt ID"),
   sync_token: z.string().min(1).describe("Sync token for optimistic locking"),
   customer_ref: z.string().optional().describe("Customer ID"),

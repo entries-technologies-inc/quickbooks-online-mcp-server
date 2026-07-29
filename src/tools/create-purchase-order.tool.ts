@@ -5,20 +5,20 @@ import { z } from "zod";
 const toolName = "create_purchase_order";
 const toolDescription = "Create a purchase order in QuickBooks Online.";
 
-const lineItemSchema = z.object({
-  item_ref: z.string().min(1),
-  qty: z.number().positive(),
-  unit_price: z.number().nonnegative(),
-  description: z.string().optional(),
-});
+const lineItemSchema = z.strictObject({
+    item_ref: z.string().min(1),
+    qty: z.number().positive(),
+    unit_price: z.number().nonnegative(),
+    description: z.string().optional(),
+  });
 
-const toolSchema = z.object({
-  vendor_ref: z.string().min(1).describe("Vendor ID"),
-  line_items: z.array(lineItemSchema).min(1).describe("Line items"),
-  txn_date: z.string().optional().describe("Transaction date (YYYY-MM-DD)"),
-  doc_number: z.string().optional().describe("Document number"),
-  private_note: z.string().optional().describe("Private note"),
-});
+const toolSchema = z.strictObject({
+    vendor_ref: z.string().min(1).describe("Vendor ID"),
+    line_items: z.array(lineItemSchema).min(1).describe("Line items"),
+    txn_date: z.string().optional().describe("Transaction date (YYYY-MM-DD)"),
+    doc_number: z.string().optional().describe("Document number"),
+    private_note: z.string().optional().describe("Private note"),
+  });
 
 const toolHandler = async ({ params }: any) => {
   const response = await createQuickbooksPurchaseOrder(params);

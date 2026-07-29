@@ -9,8 +9,7 @@ const toolDescription =
 // Shared with update-vendor-credit.tool.ts so the two tools can never drift
 // in what line shapes they accept. Amount allows 0 so existing credits with
 // legitimate 0.00 lines can round-trip through update's full-line replacement.
-export const vendorCreditLineItemSchema = z
-  .object({
+export const vendorCreditLineItemSchema = z.strictObject({
     amount: z.number().nonnegative(),
     description: z.string().optional(),
     account_ref: z.string().optional().describe("Expense account ID"),
@@ -42,14 +41,14 @@ export const globalTaxCalculationSchema = z
 
 const lineItemSchema = vendorCreditLineItemSchema;
 
-const toolSchema = z.object({
-  vendor_ref: z.string().min(1).describe("Vendor ID"),
-  line_items: z.array(lineItemSchema).min(1).describe("Line items"),
-  txn_date: z.string().optional().describe("Transaction date (YYYY-MM-DD)"),
-  doc_number: z.string().optional().describe("Document number"),
-  private_note: z.string().optional().describe("Private note"),
-  global_tax_calculation: globalTaxCalculationSchema.optional(),
-});
+const toolSchema = z.strictObject({
+    vendor_ref: z.string().min(1).describe("Vendor ID"),
+    line_items: z.array(lineItemSchema).min(1).describe("Line items"),
+    txn_date: z.string().optional().describe("Transaction date (YYYY-MM-DD)"),
+    doc_number: z.string().optional().describe("Document number"),
+    private_note: z.string().optional().describe("Private note"),
+    global_tax_calculation: globalTaxCalculationSchema.optional(),
+  });
 
 const toolHandler = async ({ params }: any) => {
   const response = await createQuickbooksVendorCredit(params);

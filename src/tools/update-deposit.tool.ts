@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const toolName = "update_deposit";
 const toolDescription = "Update a deposit in QuickBooks Online.";
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Deposit ID"),
   sync_token: z.string().min(1).describe("Sync token"),
   private_note: z.string().optional().describe("Private note"),

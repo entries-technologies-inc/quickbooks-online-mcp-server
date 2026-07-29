@@ -8,7 +8,7 @@ const toolDescription =
   "To create a sub‑account (nested under a parent), pass parent_id with the " +
   "parent account's Id; the new account's AccountType must match the parent's.";
 
-const toolSchema = z.object({
+const toolSchema = z.strictObject({
   name: z.string().min(1),
   type: z.string().min(1),
   sub_type: z.string().optional(),

@@ -4,19 +4,19 @@ import { z } from "zod";
 
 const toolName = "create-vendor";
 const toolDescription = "Create a vendor in QuickBooks Online.";
-const toolSchema = z.object({
-  vendor: z.object({
+const toolSchema = z.strictObject({
+  vendor: z.strictObject({
     DisplayName: z.string(),
     GivenName: z.string().optional(),
     FamilyName: z.string().optional(),
     CompanyName: z.string().optional(),
-    PrimaryEmailAddr: z.object({
+    PrimaryEmailAddr: z.strictObject({
       Address: z.string().optional(),
     }).optional(),
-    PrimaryPhone: z.object({
+    PrimaryPhone: z.strictObject({
       FreeFormNumber: z.string().optional(),
     }).optional(),
-    BillAddr: z.object({
+    BillAddr: z.strictObject({
       Line1: z.string().optional(),
       City: z.string().optional(),
       Country: z.string().optional(),
