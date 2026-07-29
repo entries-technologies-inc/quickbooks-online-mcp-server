@@ -64,7 +64,7 @@ export function isToolDisabled(toolName: string): boolean {
  * Tools are categorized by their name prefix (e.g. create_, update_, delete_).
  * The corresponding environment variable (e.g. QUICKBOOKS_DISABLE_WRITE) determines if the tool is registered.
  */
-export function RegisterTool<T extends z.ZodType<any, any>>(
+export function RegisterTool<T extends z.ZodType>(
   server: McpServer,
   toolDefinition: ToolDefinition<T>
 ) {
