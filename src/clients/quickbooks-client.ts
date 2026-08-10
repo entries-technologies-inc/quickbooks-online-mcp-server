@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import QuickBooks from "node-quickbooks";
 import OAuthClient from "intuit-oauth";
 import http from 'http';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -261,6 +262,13 @@ export class QuickbooksClient {
       // (RFC 6749 §4.1.2). Only the first callback may exchange the code.
       let codeExchangeStarted = false;
 
+      // Random per-run value, not guessable from the public repo. Bound to this
+      // authorize request and checked against every callback before we exchange
+      // anything, so a stranger who gets their own valid code for this client_id
+      // (client IDs aren't secret) can't hijack the callback and have their
+      // tokens written into our .env instead of ours.
+      const expectedState = crypto.randomBytes(24).toString('hex');
+
       // Create temporary server for OAuth callback
       const server = http.createServer(async (req, res) => {
         console.log(`[auth-server] ${req.method} ${req.url}`);
@@ -270,6 +278,18 @@ export class QuickbooksClient {
         if (!req.url?.startsWith('/callback')) {
           res.writeHead(404, { 'Content-Type': 'text/plain' });
           res.end('Not Found. Waiting for QuickBooks OAuth callback at /callback');
+          return;
+        }
+
+        // Reject any callback whose state doesn't match this run's authorize
+        // request, before touching codeExchangeStarted, so a spoofed/scanner
+        // hit can't consume the one-shot exchange lock and lock out the real
+        // callback that follows it.
+        const incomingState = new URL(req.url, `http://localhost:${port}`).searchParams.get('state');
+        if (incomingState !== expectedState) {
+          console.log(`[auth-server] Rejected callback with mismatched state (got: ${incomingState ?? 'none'})`);
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Invalid or missing state parameter.');
           return;
         }
 
@@ -355,7 +375,7 @@ export class QuickbooksClient {
         // Generate authorization URL with proper type assertion
         const authUri = flowClient.authorizeUri({
           scope: [OAuthClient.scopes.Accounting as string],
-          state: 'testState'
+          state: expectedState
         }).toString();
 
         console.log('\n=== QuickBooks Authorization ===');
