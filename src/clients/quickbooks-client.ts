@@ -221,7 +221,9 @@ export class QuickbooksClient {
     const msg =
       'QuickBooks authorization is invalid or expired and cannot be renewed automatically in ' +
       'production. Re-authorize this company using a public HTTPS redirect (see the "Production ' +
-      'Setup" section of the README), then restart the server.';
+      'Setup" section of the README), then restart the server. Note: an HTTP 401 from the token ' +
+      'endpoint usually means invalid_client — verify QUICKBOOKS_CLIENT_ID and ' +
+      'QUICKBOOKS_CLIENT_SECRET before re-authorizing.';
     return new Error(cause ? `${msg} (cause: ${cause})` : msg);
   }
 
@@ -544,7 +546,10 @@ export class QuickbooksClient {
         const refreshExpiresIn = token.x_refresh_token_expires_in;
         if (typeof refreshExpiresIn === 'number' && refreshExpiresIn < 14 * 24 * 3600) {
           const days = Math.round(refreshExpiresIn / 86400);
-          console.error(`[qbo-client] WARNING: refresh token expires in ~${days} day(s). Re-authorize before it expires (see README "Production Setup").`);
+          const renewHint = this.environment === 'production'
+            ? 'Re-authorize before it expires (see README "Production Setup").'
+            : 'Re-run `npm run auth` before it expires.';
+          console.error(`[qbo-client] WARNING: refresh token expires in ~${days} day(s). ${renewHint}`);
         }
 
         return {
