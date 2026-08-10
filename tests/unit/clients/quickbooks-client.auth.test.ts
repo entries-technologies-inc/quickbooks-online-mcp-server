@@ -25,6 +25,12 @@ process.env.QUICKBOOKS_REALM_ID = '12345';
 process.env.QUICKBOOKS_ENVIRONMENT = 'sandbox';
 process.env.QUICKBOOKS_REDIRECT_URI = 'https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl';
 
+// Mock dotenv to a no-op so the module under test never loads the real .env.
+// dotenv's internal CommonJS require('fs') bypasses the ESM fs mock below, so
+// without this dotenv.config({override:true}) would clobber the env values set
+// above with whatever the real .env holds (e.g. QUICKBOOKS_ENVIRONMENT).
+jest.unstable_mockModule('dotenv', () => ({ default: { config: jest.fn(), parse: jest.fn(() => ({})) } }));
+
 // Track every OAuthClient the module constructs so tests can tell the
 // module-level client (env redirect) apart from the flow client (localhost).
 type MockOAuth = {
