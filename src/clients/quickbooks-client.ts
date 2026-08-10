@@ -10,17 +10,35 @@ import open from 'open';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Resolve .env relative to the installed module (../../.env from dist/clients/).
-// This matters when the MCP server is spawned by a host (e.g. Claude Desktop,
-// Claude Code, Cursor) whose working directory is not the project root —
-// without this, dotenv silently finds nothing and startup fails.
-const ENV_PATH = path.join(__dirname, '..', '..', '.env');
+// Where the server reads .env at startup and persists rotated refresh tokens.
+// Defaults to the installed module's ../../.env (dist/clients/ -> package root)
+// so a host-spawned server with an unrelated cwd still finds it. Override with
+// QUICKBOOKS_TOKEN_STORE_PATH (an absolute path) to point at a WRITABLE location.
+// This is required whenever the module itself lives on a read-only filesystem —
+// containers with a read-only root, Nix/immutable installs (see #63, where the
+// default path can't be written) — and lets a per-tenant host keep each
+// connection's rotated token in its own isolated path.
+//
+// NOTE: this value is resolved BEFORE dotenv loads the file below, so the
+// override only takes effect when set in the host process env (e.g. the MCP
+// server config's env block) — setting it inside .env has no effect. It must
+// be absolute: a relative path would resolve against the host app's working
+// directory, which is unpredictable (the exact failure the module-relative
+// default exists to avoid).
+const tokenStorePathOverride = process.env.QUICKBOOKS_TOKEN_STORE_PATH?.trim();
+if (tokenStorePathOverride && !path.isAbsolute(tokenStorePathOverride)) {
+  throw Error(
+    `QUICKBOOKS_TOKEN_STORE_PATH must be an absolute path, got "${tokenStorePathOverride}"`
+  );
+}
+const TOKEN_STORE_PATH =
+  tokenStorePathOverride || path.join(__dirname, '..', '..', '.env');
 
-// Use override: true so that values from .env always win over any empty-string
-// placeholders a host app (e.g. Claude Desktop) may inject via its env config.
-// This prevents the server from starting with blank REFRESH_TOKEN / REALM_ID
-// even when the host config has those keys set to "".
-dotenv.config({ path: ENV_PATH, override: true });
+// Use override: true so that values from the token store always win over any
+// empty-string placeholders a host app (e.g. Claude Desktop) may inject via
+// its env config. This prevents the server from starting with blank
+// REFRESH_TOKEN / REALM_ID even when the host config has those keys set to "".
+dotenv.config({ path: TOKEN_STORE_PATH, override: true });
 
 // Register once at module level — registering inside startOAuthFlow() would
 // accumulate duplicate handlers on every OAuth call.
@@ -101,9 +119,10 @@ export class QuickbooksClient {
     return this.accessTokenExpiry <= new Date(Date.now() + QuickbooksClient.TOKEN_REFRESH_BUFFER_MS);
   }
 
-  // Read the refresh token currently persisted in .env. Used to pick up a
-  // rotation performed by a SIBLING process before we attempt our own refresh:
-  // a host may spawn this server more than once against the same .env (e.g.
+  // Read the refresh token currently persisted in the token store (.env by
+  // default, or QUICKBOOKS_TOKEN_STORE_PATH). Used to pick up a rotation
+  // performed by a SIBLING process before we attempt our own refresh: a host
+  // may spawn this server more than once against the same store (e.g.
   // Claude Desktop and Claude Code simultaneously), and Intuit invalidates the
   // previous refresh token on every rotation — so a token loaded into memory at
   // startup can be silently superseded on disk by another process.
@@ -114,7 +133,7 @@ export class QuickbooksClient {
       // inline comments removed, optional `export ` prefix handled. A naive
       // slice would keep quotes/comments and could poison a valid token with a
       // value that only looks different.
-      const parsed = dotenv.parse(fs.readFileSync(ENV_PATH));
+      const parsed = dotenv.parse(fs.readFileSync(TOKEN_STORE_PATH));
       const value = parsed.QUICKBOOKS_REFRESH_TOKEN?.trim();
       return value || undefined;
     } catch {
@@ -403,7 +422,7 @@ export class QuickbooksClient {
   }
 
   private saveTokensToEnv(): void {
-    const tokenPath = ENV_PATH;
+    const tokenPath = TOKEN_STORE_PATH;
     const envContent = fs.existsSync(tokenPath) ? fs.readFileSync(tokenPath, 'utf-8') : '';
     const envLines = envContent.split('\n');
 

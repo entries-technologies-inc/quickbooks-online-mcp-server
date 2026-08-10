@@ -75,6 +75,8 @@ QUICKBOOKS_REALM_ID=your_realm_id
 
 `.env` is gitignored so your real credentials stay local.
 
+> **Read-only or containerized installs:** the server reads `.env` at startup and writes the rotated refresh token back to it on each refresh. When the installed module sits on a **read-only filesystem** (a container with a read-only root, an immutable/Nix install), set `QUICKBOOKS_TOKEN_STORE_PATH` to an absolute, writable path for both operations. A per-tenant host can also point each connection at its own isolated token file this way. Three things to know: it must be set in the **host process env** (e.g. the `env` block of your MCP server config) — setting it inside `.env` has no effect, because the path is resolved before `.env` is read; it must be an **absolute** path (the server refuses to start otherwise); and when set, the package's own `.env` is not read at all, so any file-based config (including credentials) must live in the file it points to.
+
 ### Claude Code Integration
 
 Add to your Claude Code MCP configuration:
