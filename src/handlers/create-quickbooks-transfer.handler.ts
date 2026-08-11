@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -8,6 +9,8 @@ export interface CreateTransferInput {
   amount: number;
   txn_date?: string;
   private_note?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function createQuickbooksTransfer(data: CreateTransferInput): Promise<ToolResponse<any>> {
@@ -22,6 +25,7 @@ export async function createQuickbooksTransfer(data: CreateTransferInput): Promi
 
     if (data.txn_date) payload.TxnDate = data.txn_date;
     if (data.private_note) payload.PrivateNote = data.private_note;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createTransfer(payload, (err: any, created: any) => {

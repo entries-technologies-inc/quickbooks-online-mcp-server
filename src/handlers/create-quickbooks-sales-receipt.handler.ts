@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -17,6 +18,8 @@ export interface CreateSalesReceiptInput {
   doc_number?: string;
   private_note?: string;
   global_tax_calculation?: "TaxExcluded" | "TaxInclusive" | "NotApplicable";
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function createQuickbooksSalesReceipt(data: CreateSalesReceiptInput): Promise<ToolResponse<any>> {
@@ -58,6 +61,7 @@ export async function createQuickbooksSalesReceipt(data: CreateSalesReceiptInput
     if (data.global_tax_calculation) {
       salesReceiptPayload.GlobalTaxCalculation = data.global_tax_calculation;
     }
+    applyCurrencyFields(salesReceiptPayload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createSalesReceipt(salesReceiptPayload, (err: any, created: any) => {

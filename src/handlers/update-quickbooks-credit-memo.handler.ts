@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -8,6 +9,8 @@ export interface UpdateCreditMemoInput {
   customer_ref?: string;
   private_note?: string;
   doc_number?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function updateQuickbooksCreditMemo(data: UpdateCreditMemoInput): Promise<ToolResponse<any>> {
@@ -29,6 +32,7 @@ export async function updateQuickbooksCreditMemo(data: UpdateCreditMemoInput): P
     if (data.doc_number) {
       payload.DocNumber = data.doc_number;
     }
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).updateCreditMemo(payload, (err: any, updated: any) => {
@@ -43,4 +47,3 @@ export async function updateQuickbooksCreditMemo(data: UpdateCreditMemoInput): P
     return { result: null, isError: true, error: formatError(error) };
   }
 }
-

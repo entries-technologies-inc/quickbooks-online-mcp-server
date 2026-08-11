@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -11,6 +12,7 @@ export interface CreateAccountInput {
   // Id). SubAccount:true and ParentRef:{value:parent_id} are sent. The new
   // account's AccountType must match the parent's, or QBO rejects it.
   parent_id?: string;
+  currency_ref?: string;
 }
 
 // Coerce a parent reference into the QBO reference-object shape { value: "<id>" }.
@@ -89,6 +91,8 @@ export async function createQuickbooksAccount(data: CreateAccountInput): Promise
       payload.SubAccount = true;
       payload.ParentRef = parentRef;
     }
+    // CurrencyRef is a nested reference object; apply after scalar normalization.
+    applyCurrencyFields(payload, { currency_ref: data.currency_ref });
 
     return new Promise((resolve) => {
       (quickbooks as any).createAccount(payload, (err: any, account: any) => {

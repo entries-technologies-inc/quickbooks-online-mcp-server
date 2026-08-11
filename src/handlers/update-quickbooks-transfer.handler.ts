@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -9,6 +10,8 @@ export interface UpdateTransferInput {
   to_account_ref?: string;
   amount?: number;
   private_note?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function updateQuickbooksTransfer(data: UpdateTransferInput): Promise<ToolResponse<any>> {
@@ -19,6 +22,7 @@ export async function updateQuickbooksTransfer(data: UpdateTransferInput): Promi
     if (data.to_account_ref) payload.ToAccountRef = { value: data.to_account_ref };
     if (data.amount !== undefined) payload.Amount = data.amount;
     if (data.private_note) payload.PrivateNote = data.private_note;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).updateTransfer(payload, (err: any, updated: any) => {
@@ -30,4 +34,3 @@ export async function updateQuickbooksTransfer(data: UpdateTransferInput): Promi
     return { result: null, isError: true, error: formatError(error) };
   }
 }
-

@@ -1,4 +1,5 @@
 import { createQuickbooksCreditMemo } from "../handlers/create-quickbooks-credit-memo.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -29,6 +30,7 @@ const toolSchema = z.strictObject({
       .enum(["TaxExcluded", "TaxInclusive", "NotApplicable"])
       .optional()
       .describe("Non-US companies only: whether unit prices exclude or include tax"),
+    ...currencyFieldsSchema,
   });
 
 const toolHandler = async ({ params }: any) => {

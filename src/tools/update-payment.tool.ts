@@ -1,4 +1,5 @@
 import { updateQuickbooksPayment } from "../handlers/update-quickbooks-payment.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -12,6 +13,7 @@ const toolSchema = z.strictObject({
   total_amt: z.number().optional().describe("Total payment amount"),
   payment_method_ref: z.string().optional().describe("Payment method ID"),
   private_note: z.string().optional().describe("Private note"),
+  ...currencyFieldsSchema,
 });
 
 const toolHandler = async ({ params }: any) => {

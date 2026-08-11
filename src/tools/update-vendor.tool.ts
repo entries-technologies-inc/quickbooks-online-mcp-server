@@ -1,4 +1,5 @@
 import { updateQuickbooksVendor } from "../handlers/update-quickbooks-vendor.handler.js";
+import { qboCurrencyRefSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -12,6 +13,7 @@ const toolSchema = z.strictObject({
     GivenName: z.string().optional(),
     FamilyName: z.string().optional(),
     CompanyName: z.string().optional(),
+    CurrencyRef: qboCurrencyRefSchema,
     PrimaryEmailAddr: z.strictObject({
       Address: z.string().optional(),
     }).optional(),

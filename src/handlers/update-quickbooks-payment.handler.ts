@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -9,6 +10,8 @@ export interface UpdatePaymentInput {
   total_amt?: number;
   payment_method_ref?: string;
   private_note?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function updateQuickbooksPayment(data: UpdatePaymentInput): Promise<ToolResponse<any>> {
@@ -33,6 +36,7 @@ export async function updateQuickbooksPayment(data: UpdatePaymentInput): Promise
     if (data.private_note) {
       paymentPayload.PrivateNote = data.private_note;
     }
+    applyCurrencyFields(paymentPayload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).updatePayment(paymentPayload, (err: any, updated: any) => {
@@ -47,4 +51,3 @@ export async function updateQuickbooksPayment(data: UpdatePaymentInput): Promise
     return { result: null, isError: true, error: formatError(error) };
   }
 }
-

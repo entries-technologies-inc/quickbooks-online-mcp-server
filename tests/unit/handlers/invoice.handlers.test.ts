@@ -69,5 +69,40 @@ describe('Invoice Handlers', () => {
 
       expect(result.isError).toBe(true);
     });
+
+    it('should map multicurrency fields onto the QBO payload', async () => {
+      let capturedPayload: any = null;
+      mockQuickBooksInstance.createInvoice.mockImplementation((payload: any, cb: any) => {
+        capturedPayload = payload;
+        cb(null, { Id: '123' });
+      });
+
+      const result = await createQuickbooksInvoice({
+        customer_ref: 'cust-1',
+        line_items: [{ item_ref: 'item-1', qty: 1, unit_price: 100 }],
+        currency_ref: 'GBP',
+        exchange_rate: 1.17,
+      });
+
+      expect(result.isError).toBe(false);
+      expect(capturedPayload.CurrencyRef).toEqual({ value: 'GBP' });
+      expect(capturedPayload.ExchangeRate).toBe(1.17);
+    });
+
+    it('should omit multicurrency fields when not provided', async () => {
+      let capturedPayload: any = null;
+      mockQuickBooksInstance.createInvoice.mockImplementation((payload: any, cb: any) => {
+        capturedPayload = payload;
+        cb(null, { Id: '123' });
+      });
+
+      await createQuickbooksInvoice({
+        customer_ref: 'cust-1',
+        line_items: [{ item_ref: 'item-1', qty: 1, unit_price: 100 }],
+      });
+
+      expect(capturedPayload).not.toHaveProperty('CurrencyRef');
+      expect(capturedPayload).not.toHaveProperty('ExchangeRate');
+    });
   });
 });

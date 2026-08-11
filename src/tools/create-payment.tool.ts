@@ -1,4 +1,5 @@
 import { createQuickbooksPayment } from "../handlers/create-quickbooks-payment.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -28,19 +29,7 @@ const toolSchema = z.strictObject({
       .describe(
         "Reference no. for the payment, e.g. a bank transfer/transaction number (PaymentRefNum)"
       ),
-    currency_ref: z
-      .string()
-      .optional()
-      .describe(
-        "Reference to the currency (e.g. USD, GBP) in which all amounts on the payment are expressed. Required if multicurrency is enabled for the company (CurrencyRef)"
-      ),
-    exchange_rate: z
-      .number()
-      .positive()
-      .optional()
-      .describe(
-        "The number of home-currency units it takes to equal one unit of the currency specified by currency_ref. Applicable if multicurrency is enabled for the company (ExchangeRate)"
-      ),
+    ...currencyFieldsSchema,
     line: z.array(lineSchema).optional().describe("Line items linking to invoices"),
   });
 

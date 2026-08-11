@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 import {
@@ -14,6 +15,8 @@ export interface UpdateVendorCreditInput {
   private_note?: string;
   line_items?: VendorCreditLineItemInput[];
   global_tax_calculation?: GlobalTaxCalculation;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function updateQuickbooksVendorCredit(data: UpdateVendorCreditInput): Promise<ToolResponse<any>> {
@@ -53,6 +56,7 @@ export async function updateQuickbooksVendorCredit(data: UpdateVendorCreditInput
     if (data.vendor_ref) payload.VendorRef = { value: data.vendor_ref };
     if (data.private_note) payload.PrivateNote = data.private_note;
     if (data.global_tax_calculation) payload.GlobalTaxCalculation = data.global_tax_calculation;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).updateVendorCredit(payload, (err: any, updated: any) => {

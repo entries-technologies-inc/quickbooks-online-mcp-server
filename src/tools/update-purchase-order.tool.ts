@@ -1,4 +1,5 @@
 import { updateQuickbooksPurchaseOrder } from "../handlers/update-quickbooks-purchase-order.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -11,6 +12,7 @@ const toolSchema = z.strictObject({
   vendor_ref: z.string().optional().describe("Vendor ID"),
   private_note: z.string().optional().describe("Private note"),
   doc_number: z.string().optional().describe("Document number"),
+  ...currencyFieldsSchema,
 });
 
 const toolHandler = async ({ params }: any) => {

@@ -1,4 +1,5 @@
 import { updateQuickbooksVendorCredit } from "../handlers/update-quickbooks-vendor-credit.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { globalTaxCalculationSchema, vendorCreditLineItemSchema } from "./create-vendor-credit.tool.js";
@@ -18,6 +19,7 @@ const toolSchema = z.strictObject({
       .optional()
       .describe("Full replacement set of line items (replaces ALL existing lines)"),
     global_tax_calculation: globalTaxCalculationSchema.optional(),
+    ...currencyFieldsSchema,
   });
 
 const toolHandler = async ({ params }: any) => {

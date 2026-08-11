@@ -215,6 +215,42 @@ describe('Payment Handlers', () => {
       expect(result.isError).toBe(true);
       expect(result.error).toContain('Auth failed');
     });
+
+    it('should map multicurrency fields onto the QBO payload', async () => {
+      let capturedPayload: any = null;
+      (mockQuickBooksInstance.updatePayment as jest.Mock).mockImplementation(
+        (payload: any, cb: any) => {
+          capturedPayload = payload;
+          cb(null, { Id: '123' });
+        }
+      );
+
+      const result = await updateQuickbooksPayment({
+        id: '123',
+        sync_token: '0',
+        currency_ref: 'EUR',
+        exchange_rate: 1.05,
+      });
+
+      expect(result.isError).toBe(false);
+      expect(capturedPayload.CurrencyRef).toEqual({ value: 'EUR' });
+      expect(capturedPayload.ExchangeRate).toBe(1.05);
+    });
+
+    it('should omit multicurrency fields when not provided', async () => {
+      let capturedPayload: any = null;
+      (mockQuickBooksInstance.updatePayment as jest.Mock).mockImplementation(
+        (payload: any, cb: any) => {
+          capturedPayload = payload;
+          cb(null, { Id: '123' });
+        }
+      );
+
+      await updateQuickbooksPayment({ id: '123', sync_token: '0', total_amt: 150 });
+
+      expect(capturedPayload).not.toHaveProperty('CurrencyRef');
+      expect(capturedPayload).not.toHaveProperty('ExchangeRate');
+    });
   });
 
   describe('deleteQuickbooksPayment', () => {

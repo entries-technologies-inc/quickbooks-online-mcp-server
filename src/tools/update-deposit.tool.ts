@@ -1,4 +1,5 @@
 import { updateQuickbooksDeposit } from "../handlers/update-quickbooks-deposit.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -8,6 +9,7 @@ const toolSchema = z.strictObject({
   id: z.string().min(1).describe("Deposit ID"),
   sync_token: z.string().min(1).describe("Sync token"),
   private_note: z.string().optional().describe("Private note"),
+  ...currencyFieldsSchema,
 });
 
 const toolHandler = async ({ params }: any) => {

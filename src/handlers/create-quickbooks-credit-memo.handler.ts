@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -15,6 +16,8 @@ export interface CreateCreditMemoInput {
   doc_number?: string;
   private_note?: string;
   global_tax_calculation?: "TaxExcluded" | "TaxInclusive" | "NotApplicable";
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function createQuickbooksCreditMemo(data: CreateCreditMemoInput): Promise<ToolResponse<any>> {
@@ -50,6 +53,7 @@ export async function createQuickbooksCreditMemo(data: CreateCreditMemoInput): P
     if (data.global_tax_calculation) {
       creditMemoPayload.GlobalTaxCalculation = data.global_tax_calculation;
     }
+    applyCurrencyFields(creditMemoPayload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createCreditMemo(creditMemoPayload, (err: any, created: any) => {

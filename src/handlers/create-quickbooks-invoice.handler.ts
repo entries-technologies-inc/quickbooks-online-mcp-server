@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -22,6 +23,8 @@ export interface CreateInvoiceInput {
   customer_memo?: string; // CustomerMemo (customer-facing message)
   sales_term_ref?: string; // SalesTerm id; falls back to customer default
   bill_email?: string; // BillEmail address; falls back to customer default
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 // Primitive field type map (based on Quickbooks Invoice entity reference docs)
@@ -32,6 +35,7 @@ const invoiceFieldTypeMap: Record<string, "string" | "number" | "boolean"> = {
   GlobalTaxCalculation: "string",
   ApplyTaxAfterDiscount: "boolean",
   TotalAmt: "number",
+  ExchangeRate: "number",
 };
 
 /**
@@ -98,6 +102,8 @@ export async function createQuickbooksInvoice(data: CreateInvoiceInput): Promise
     if (data.global_tax_calculation) {
       invoicePayload.GlobalTaxCalculation = data.global_tax_calculation;
     }
+
+    applyCurrencyFields(invoicePayload, data);
 
     const normalizedPayload = normalizeInvoiceFields(invoicePayload);
 

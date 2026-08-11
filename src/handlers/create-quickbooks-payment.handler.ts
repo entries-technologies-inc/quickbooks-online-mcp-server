@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -45,12 +46,7 @@ export async function createQuickbooksPayment(data: CreatePaymentInput): Promise
     if (data.payment_ref_num) {
       paymentPayload.PaymentRefNum = data.payment_ref_num;
     }
-    if (data.currency_ref) {
-      paymentPayload.CurrencyRef = { value: data.currency_ref };
-    }
-    if (data.exchange_rate !== undefined) {
-      paymentPayload.ExchangeRate = data.exchange_rate;
-    }
+    applyCurrencyFields(paymentPayload, data);
     if (data.line) {
       paymentPayload.Line = data.line.map((l) => ({
         Amount: l.amount,

@@ -33,6 +33,22 @@ describe('Vendor Handlers', () => {
       expect(result.result).toEqual(mockVendor);
     });
 
+    it('should forward CurrencyRef on the vendor payload', async () => {
+      let capturedPayload: any = null;
+      mockQuickBooksInstance.createVendor.mockImplementation((payload: any, cb: any) => {
+        capturedPayload = payload;
+        cb(null, { Id: '56', DisplayName: 'Acme Corp' });
+      });
+
+      const result = await createQuickbooksVendor({
+        DisplayName: 'Acme Corp',
+        CurrencyRef: { value: 'GBP' },
+      });
+
+      expect(result.isError).toBe(false);
+      expect(capturedPayload.CurrencyRef).toEqual({ value: 'GBP' });
+    });
+
     it('should handle API errors', async () => {
       mockQuickBooksInstance.createVendor.mockImplementation((_payload: any, cb: any) =>
         cb(new Error('SAXParseException: Premature end of file'), null)

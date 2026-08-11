@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -6,6 +7,8 @@ export interface UpdateDepositInput {
   id: string;
   sync_token: string;
   private_note?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function updateQuickbooksDeposit(data: UpdateDepositInput): Promise<ToolResponse<any>> {
@@ -13,6 +16,7 @@ export async function updateQuickbooksDeposit(data: UpdateDepositInput): Promise
     const quickbooks = await QuickbooksClient.getInstance();
     const payload: any = { Id: data.id, SyncToken: data.sync_token, sparse: true };
     if (data.private_note) payload.PrivateNote = data.private_note;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).updateDeposit(payload, (err: any, updated: any) => {
@@ -24,4 +28,3 @@ export async function updateQuickbooksDeposit(data: UpdateDepositInput): Promise
     return { result: null, isError: true, error: formatError(error) };
   }
 }
-

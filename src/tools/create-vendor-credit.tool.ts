@@ -1,4 +1,5 @@
 import { createQuickbooksVendorCredit } from "../handlers/create-quickbooks-vendor-credit.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -48,6 +49,7 @@ const toolSchema = z.strictObject({
     doc_number: z.string().optional().describe("Document number"),
     private_note: z.string().optional().describe("Private note"),
     global_tax_calculation: globalTaxCalculationSchema.optional(),
+    ...currencyFieldsSchema,
   });
 
 const toolHandler = async ({ params }: any) => {
