@@ -1,0 +1,7 @@
+{
+  "name": "query-string",
+  "version": "6.14.1-cjs-shim",
+  "description": "CommonJS query-string shim using URLSearchParams (no decode-uri-component)",
+  "main": "index.js",
+  "license": "MIT"
+}
