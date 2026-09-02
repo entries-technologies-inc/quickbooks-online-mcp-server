@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -17,6 +18,8 @@ export interface CreateRefundReceiptInput {
   doc_number?: string;
   private_note?: string;
   global_tax_calculation?: "TaxExcluded" | "TaxInclusive" | "NotApplicable";
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function createQuickbooksRefundReceipt(data: CreateRefundReceiptInput): Promise<ToolResponse<any>> {
@@ -58,6 +61,7 @@ export async function createQuickbooksRefundReceipt(data: CreateRefundReceiptInp
     if (data.global_tax_calculation) {
       refundReceiptPayload.GlobalTaxCalculation = data.global_tax_calculation;
     }
+    applyCurrencyFields(refundReceiptPayload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createRefundReceipt(refundReceiptPayload, (err: any, created: any) => {

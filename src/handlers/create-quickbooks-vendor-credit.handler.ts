@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -23,6 +24,8 @@ export interface CreateVendorCreditInput {
   doc_number?: string;
   private_note?: string;
   global_tax_calculation?: GlobalTaxCalculation;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 // Build a QBO VendorCredit line the same way bill lines are shaped:
@@ -59,6 +62,7 @@ export async function createQuickbooksVendorCredit(data: CreateVendorCreditInput
     if (data.doc_number) payload.DocNumber = data.doc_number;
     if (data.private_note) payload.PrivateNote = data.private_note;
     if (data.global_tax_calculation) payload.GlobalTaxCalculation = data.global_tax_calculation;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createVendorCredit(payload, (err: any, created: any) => {

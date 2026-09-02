@@ -1,4 +1,5 @@
 import { createQuickbooksAccount } from "../handlers/create-quickbooks-account.handler.js";
+import { currencyRefSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -6,7 +7,8 @@ const toolName = "create_account";
 const toolDescription =
   "Create a chart‑of‑accounts entry in QuickBooks Online. " +
   "To create a sub‑account (nested under a parent), pass parent_id with the " +
-  "parent account's Id; the new account's AccountType must match the parent's.";
+  "parent account's Id; the new account's AccountType must match the parent's. " +
+  "For bank/credit card/AR/AP accounts under multicurrency, pass currency_ref.";
 
 const toolSchema = z.strictObject({
   name: z.string().min(1),
@@ -17,6 +19,7 @@ const toolSchema = z.strictObject({
   // Id). SubAccount:true and ParentRef:{value:parent_id} are sent to QBO. The
   // new account's AccountType must match the parent's, or QBO rejects it.
   parent_id: z.string().min(1).optional(),
+  currency_ref: currencyRefSchema,
 });
 
 const toolHandler = async ({ params }: any) => {

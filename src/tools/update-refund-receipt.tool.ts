@@ -1,4 +1,5 @@
 import { updateQuickbooksRefundReceipt } from "../handlers/update-quickbooks-refund-receipt.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -11,6 +12,7 @@ const toolSchema = z.strictObject({
   customer_ref: z.string().optional().describe("Customer ID"),
   private_note: z.string().optional().describe("Private note"),
   doc_number: z.string().optional().describe("Document number"),
+  ...currencyFieldsSchema,
 });
 
 const toolHandler = async ({ params }: any) => {

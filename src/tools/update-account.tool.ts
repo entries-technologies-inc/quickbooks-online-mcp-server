@@ -3,7 +3,8 @@ import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
 const toolName = "update_account";
-const toolDescription = "Update an existing chart‑of‑accounts entry in Quickbooks.";
+const toolDescription =
+  "Update an existing chart‑of‑accounts entry in Quickbooks. Pass QBO field names in patch (e.g. CurrencyRef: { value: \"GBP\" } for eligible account types under multicurrency).";
 
 const toolSchema = z.object({
   account_id: z.string().min(1),

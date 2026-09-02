@@ -3,7 +3,8 @@ import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
 const toolName = "update_invoice";
-const toolDescription = "Update an existing invoice in Quickbooks by ID (sparse update).";
+const toolDescription =
+  "Update an existing invoice in Quickbooks by ID (sparse update). Pass QBO field names in patch (e.g. CurrencyRef: { value: \"GBP\" }, ExchangeRate: 1.17).";
 
 const toolSchema = z.object({
   invoice_id: z.string().min(1),

@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -13,6 +14,8 @@ export interface CreatePurchaseOrderInput {
   txn_date?: string;
   doc_number?: string;
   private_note?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
   ship_addr?: {
     line1?: string;
     city?: string;
@@ -52,6 +55,7 @@ export async function createQuickbooksPurchaseOrder(data: CreatePurchaseOrderInp
         PostalCode: data.ship_addr.postal_code,
       };
     }
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createPurchaseOrder(payload, (err: any, created: any) => {

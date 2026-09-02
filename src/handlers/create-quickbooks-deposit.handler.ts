@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -12,6 +13,8 @@ export interface CreateDepositInput {
   }>;
   txn_date?: string;
   private_note?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function createQuickbooksDeposit(data: CreateDepositInput): Promise<ToolResponse<any>> {
@@ -34,6 +37,7 @@ export async function createQuickbooksDeposit(data: CreateDepositInput): Promise
 
     if (data.txn_date) payload.TxnDate = data.txn_date;
     if (data.private_note) payload.PrivateNote = data.private_note;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).createDeposit(payload, (err: any, created: any) => {

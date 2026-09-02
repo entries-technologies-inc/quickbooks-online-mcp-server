@@ -1,4 +1,5 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
+import { applyCurrencyFields } from "../helpers/currency-fields.helper.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
@@ -8,6 +9,8 @@ export interface UpdatePurchaseOrderInput {
   vendor_ref?: string;
   private_note?: string;
   doc_number?: string;
+  currency_ref?: string;
+  exchange_rate?: number;
 }
 
 export async function updateQuickbooksPurchaseOrder(data: UpdatePurchaseOrderInput): Promise<ToolResponse<any>> {
@@ -23,6 +26,7 @@ export async function updateQuickbooksPurchaseOrder(data: UpdatePurchaseOrderInp
     if (data.vendor_ref) payload.VendorRef = { value: data.vendor_ref };
     if (data.private_note) payload.PrivateNote = data.private_note;
     if (data.doc_number) payload.DocNumber = data.doc_number;
+    applyCurrencyFields(payload, data);
 
     return new Promise((resolve) => {
       (quickbooks as any).updatePurchaseOrder(payload, (err: any, updated: any) => {
@@ -37,4 +41,3 @@ export async function updateQuickbooksPurchaseOrder(data: UpdatePurchaseOrderInp
     return { result: null, isError: true, error: formatError(error) };
   }
 }
-

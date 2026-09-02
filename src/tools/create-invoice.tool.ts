@@ -1,4 +1,5 @@
 import { createQuickbooksInvoice } from "../handlers/create-quickbooks-invoice.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -56,6 +57,7 @@ const toolSchema = z.strictObject({
       .min(1)
       .optional()
       .describe("Billing email address (QBO BillEmail). Falls back to the customer default if omitted"),
+    ...currencyFieldsSchema,
   });
 
 const toolHandler = async ({ params }: any) => {

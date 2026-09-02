@@ -1,4 +1,5 @@
 import { createQuickbooksTransfer } from "../handlers/create-quickbooks-transfer.handler.js";
+import { currencyFieldsSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -10,6 +11,7 @@ const toolSchema = z.strictObject({
   amount: z.number().positive().describe("Transfer amount"),
   txn_date: z.string().optional().describe("Transaction date (YYYY-MM-DD)"),
   private_note: z.string().optional().describe("Private note"),
+  ...currencyFieldsSchema,
 });
 
 const toolHandler = async ({ params }: any) => {

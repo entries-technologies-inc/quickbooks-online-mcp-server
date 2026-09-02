@@ -288,6 +288,41 @@ describe('Refund, PurchaseOrder, VendorCredit Handlers', () => {
       expect(result.isError).toBe(false);
     });
 
+    it('should map multicurrency fields onto the purchase order payload', async () => {
+      let capturedPayload: any = null;
+      mockQuickBooksInstance.createPurchaseOrder.mockImplementation((payload: any, cb: any) => {
+        capturedPayload = payload;
+        cb(null, { Id: '1' });
+      });
+
+      const result = await createQuickbooksPurchaseOrder({
+        vendor_ref: 'vendor-1',
+        line_items: [{ item_ref: 'item-1', qty: 1, unit_price: 100 }],
+        currency_ref: 'CAD',
+        exchange_rate: 1.35,
+      });
+
+      expect(result.isError).toBe(false);
+      expect(capturedPayload.CurrencyRef).toEqual({ value: 'CAD' });
+      expect(capturedPayload.ExchangeRate).toBe(1.35);
+    });
+
+    it('should omit multicurrency fields on purchase order when not provided', async () => {
+      let capturedPayload: any = null;
+      mockQuickBooksInstance.createPurchaseOrder.mockImplementation((payload: any, cb: any) => {
+        capturedPayload = payload;
+        cb(null, { Id: '1' });
+      });
+
+      await createQuickbooksPurchaseOrder({
+        vendor_ref: 'vendor-1',
+        line_items: [{ item_ref: 'item-1', qty: 1, unit_price: 100 }],
+      });
+
+      expect(capturedPayload).not.toHaveProperty('CurrencyRef');
+      expect(capturedPayload).not.toHaveProperty('ExchangeRate');
+    });
+
     it('should create a purchase order - authentication error', async () => {
       (mockQuickbooksClientClass.getInstance as any).mockRejectedValue(new Error('Auth failed'));
 

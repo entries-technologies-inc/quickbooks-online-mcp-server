@@ -56,6 +56,36 @@ describe('createQuickbooksAccount', () => {
     expect(typeof captured.ParentRef).toBe('object');
   });
 
+  it('maps currency_ref to CurrencyRef on the QBO payload', async () => {
+    let captured: any;
+    mockQuickBooksInstance.createAccount.mockImplementation((payload: any, cb: any) => {
+      captured = payload;
+      cb(null, { Id: '12', Name: 'GBP Checking' });
+    });
+
+    const result = await createQuickbooksAccount({
+      name: 'GBP Checking',
+      type: 'Bank',
+      currency_ref: 'GBP',
+    });
+
+    expect(result.isError).toBe(false);
+    expect(captured.CurrencyRef).toEqual({ value: 'GBP' });
+    expect(captured).not.toHaveProperty('ExchangeRate');
+  });
+
+  it('omits CurrencyRef when currency_ref is not provided', async () => {
+    let captured: any;
+    mockQuickBooksInstance.createAccount.mockImplementation((payload: any, cb: any) => {
+      captured = payload;
+      cb(null, { Id: '10', Name: 'Office Supplies' });
+    });
+
+    await createQuickbooksAccount({ name: 'Office Supplies', type: 'Expense' });
+
+    expect(captured).not.toHaveProperty('CurrencyRef');
+  });
+
   it('propagates QBO errors', async () => {
     mockQuickBooksInstance.createAccount.mockImplementation((_payload: any, cb: any) =>
       cb(new Error('Duplicate name'), null)
