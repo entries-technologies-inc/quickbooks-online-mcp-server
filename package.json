@@ -7,8 +7,7 @@
     "type": "module",
     "bin": "./dist/index.js",
     "files": [
-        "dist",
-        "vendor"
+        "dist"
     ],
     "scripts": {
         "build": "tsc && shx chmod +x dist/*.js",
@@ -26,8 +25,7 @@
         "dotenv": "^16.4.7",
         "intuit-oauth": "^4.0.0",
         "node-quickbooks": "^2.0.43",
-        "open": "^9.1.0",
-        "query-string": "file:vendor/query-string-cjs"
+        "open": "^9.1.0"
     },
     "peerDependencies": {
         "zod": "^4.0.0"
@@ -49,7 +47,6 @@
         "zod": "4.3.6"
     },
     "overrides": {
-        "query-string": "$query-string",
         "node-quickbooks": {
             "fast-xml-parser": "^5.10.1",
             "underscore": "^1.13.8",
