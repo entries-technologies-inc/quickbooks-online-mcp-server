@@ -195,17 +195,21 @@ export class QuickbooksClient {
   // Classify a SINGLE error object (no cause traversal — the caller walks the
   // chain). Returns true only for a genuine auth-invalidation.
   private classifyOneError(raw: unknown): boolean {
-    const asObj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+    const asObj =
+      raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
 
     // Explicit OAuth error fields, when populated.
     const errField = String(asObj?.error ?? "").toLowerCase();
     const errDesc = String(asObj?.error_description ?? "").toLowerCase();
-    if (errField.includes("invalid_grant") || errDesc.includes("invalid_grant")) return true;
+    if (errField.includes("invalid_grant") || errDesc.includes("invalid_grant"))
+      return true;
 
     // Numeric HTTP status from whichever field carries it (incl. intuit-oauth's
     // authResponse.status() accessor).
     let status: number | undefined;
-    const ar = asObj?.authResponse as { status?: unknown; response?: { status?: unknown } } | undefined;
+    const ar = asObj?.authResponse as
+      | { status?: unknown; response?: { status?: unknown } }
+      | undefined;
     if (ar) {
       if (typeof ar.status === "function") {
         try {
@@ -217,17 +221,24 @@ export class QuickbooksClient {
       } else if (typeof ar.status === "number") {
         status = ar.status;
       }
-      if (status === undefined && ar.response && typeof ar.response.status === "number") {
+      if (
+        status === undefined &&
+        ar.response &&
+        typeof ar.response.status === "number"
+      ) {
         status = ar.response.status;
       }
     }
-    if (status === undefined && typeof asObj?.status === "number") status = asObj.status as number;
+    if (status === undefined && typeof asObj?.status === "number")
+      status = asObj.status as number;
 
     // Fallback: parse the axios-style message ("Request failed with status code
     // NNN") — the only signal intuit-oauth 4.x reliably exposes on invalid_grant
     // (its response body is discarded). The \b prevents a 4-digit number from
     // matching its 3-digit prefix.
-    const message = (raw instanceof Error ? raw.message : String(raw ?? "")).toLowerCase();
+    const message = (
+      raw instanceof Error ? raw.message : String(raw ?? "")
+    ).toLowerCase();
     if (message.includes("invalid_grant")) return true;
     if (status === undefined) {
       const m = message.match(/status code (\d{3})\b/);
@@ -318,7 +329,18 @@ export class QuickbooksClient {
 
       // Create temporary server for OAuth callback
       const server = http.createServer(async (req, res) => {
-        console.log(`[auth-server] ${req.method} ${req.url}`);
+        // Log method + pathname only. The callback query carries attacker-
+        // controlled code/state; interpolating req.url would let %0a in those
+        // params forge extra log lines.
+        let requestPath = "";
+        try {
+          requestPath = req.url
+            ? new URL(req.url, `http://localhost:${port}`).pathname
+            : "";
+        } catch {
+          requestPath = "(invalid-url)";
+        }
+        console.log(`[auth-server] ${req.method} ${requestPath}`);
 
         // Respond to anything that isn't /callback so diagnostic probes (curl,
         // ngrok health checks, favicon requests, etc.) don't hang the server.
@@ -334,9 +356,14 @@ export class QuickbooksClient {
         // request, before touching codeExchangeStarted, so a spoofed/scanner
         // hit can't consume the one-shot exchange lock and lock out the real
         // callback that follows it.
-        const incomingState = new URL(req.url, `http://localhost:${port}`).searchParams.get("state");
+        const incomingState = new URL(
+          req.url,
+          `http://localhost:${port}`,
+        ).searchParams.get("state");
         if (incomingState !== expectedState) {
-          console.log(`[auth-server] Rejected callback with mismatched state (got: ${incomingState ?? "none"})`);
+          console.log(
+            `[auth-server] Rejected callback with mismatched or missing state`,
+          );
           res.writeHead(400, { "Content-Type": "text/plain" });
           res.end("Invalid or missing state parameter.");
           return;
@@ -348,7 +375,9 @@ export class QuickbooksClient {
         // handler observes it and bails out here.
         if (codeExchangeStarted) {
           res.writeHead(200, { "Content-Type": "text/html" });
-          res.end("<html><body style=\"font-family:Arial;text-align:center;margin-top:20vh\"><h2>Processing… you can close this window.</h2></body></html>");
+          res.end(
+            '<html><body style="font-family:Arial;text-align:center;margin-top:20vh"><h2>Processing… you can close this window.</h2></body></html>',
+          );
           return;
         }
         codeExchangeStarted = true;
@@ -513,7 +542,11 @@ export class QuickbooksClient {
         fs.writeFileSync(tmpPath, newContent, { mode: 0o600 });
         fs.renameSync(tmpPath, tokenPath);
       } catch (err) {
-        try { fs.unlinkSync(tmpPath); } catch { /* best effort */ }
+        try {
+          fs.unlinkSync(tmpPath);
+        } catch {
+          /* best effort */
+        }
         throw err;
       }
     }
@@ -610,9 +643,10 @@ export class QuickbooksClient {
           refreshExpiresIn < 14 * 24 * 3600
         ) {
           const days = Math.round(refreshExpiresIn / 86400);
-          const renewHint = this.environment === "production"
-            ? "Re-authorize before it expires (see README \"Production Setup\")."
-            : "Re-run `npm run auth` before it expires.";
+          const renewHint =
+            this.environment === "production"
+              ? 'Re-authorize before it expires (see README "Production Setup").'
+              : "Re-run `npm run auth` before it expires.";
           console.error(
             `[qbo-client] WARNING: refresh token expires in ~${days} day(s). ${renewHint}`,
           );
@@ -628,7 +662,9 @@ export class QuickbooksClient {
         // (auth-invalidation vs transient) without re-parsing the message.
         // Assigned rather than passed to the constructor so this compiles
         // regardless of the configured TS lib target.
-        const wrapped = new Error(`Failed to refresh Quickbooks token: ${message}`);
+        const wrapped = new Error(
+          `Failed to refresh Quickbooks token: ${message}`,
+        );
         (wrapped as Error & { cause?: unknown }).cause = error;
         throw wrapped;
       } finally {
@@ -662,7 +698,8 @@ export class QuickbooksClient {
           try {
             await this.refreshAccessToken();
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message =
+              error instanceof Error ? error.message : String(error);
             // A transient failure (Intuit 5xx/429, network blip) says nothing
             // about token validity. In BOTH environments, rethrow it as-is so
             // the caller sees a retryable error and the preserved in-memory
