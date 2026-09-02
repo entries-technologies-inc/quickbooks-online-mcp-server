@@ -329,7 +329,18 @@ export class QuickbooksClient {
 
       // Create temporary server for OAuth callback
       const server = http.createServer(async (req, res) => {
-        console.log(`[auth-server] ${req.method} ${req.url}`);
+        // Log method + pathname only. The callback query carries attacker-
+        // controlled code/state; interpolating req.url would let %0a in those
+        // params forge extra log lines.
+        let requestPath = "";
+        try {
+          requestPath = req.url
+            ? new URL(req.url, `http://localhost:${port}`).pathname
+            : "";
+        } catch {
+          requestPath = "(invalid-url)";
+        }
+        console.log(`[auth-server] ${req.method} ${requestPath}`);
 
         // Respond to anything that isn't /callback so diagnostic probes (curl,
         // ngrok health checks, favicon requests, etc.) don't hang the server.
@@ -351,7 +362,7 @@ export class QuickbooksClient {
         ).searchParams.get("state");
         if (incomingState !== expectedState) {
           console.log(
-            `[auth-server] Rejected callback with mismatched state (got: ${incomingState ?? "none"})`,
+            `[auth-server] Rejected callback with mismatched or missing state`,
           );
           res.writeHead(400, { "Content-Type": "text/plain" });
           res.end("Invalid or missing state parameter.");
