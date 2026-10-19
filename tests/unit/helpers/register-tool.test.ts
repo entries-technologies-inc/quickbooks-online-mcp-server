@@ -269,7 +269,7 @@ describe("unsupported parameter reporting", () => {
       schema,
       handler: jest.fn(),
     } as any);
-    const paramsSchema = (server.tool as jest.Mock).mock.calls[0][2].params;
+    const paramsSchema = ((server.tool as jest.Mock).mock.calls[0] as any[])[2].params;
     expect(paramsSchema).toBe(schema);
   });
 
