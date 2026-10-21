@@ -1,5 +1,6 @@
 import type { ZodType } from "zod";
 import type { ToolDefinition } from "../types/tool-definition.js";
+import { markCatalogFailure } from "./mark-catalog-failure.js";
 
 import { CreateCustomerTool } from "./create-customer.tool.js";
 import { GetCustomerTool } from "./get-customer.tool.js";
@@ -148,7 +149,7 @@ import { GetVendorBalanceTool } from "./get-vendor-balance.tool.js";
 // create-bill, update-bill, delete-bill, get-bill, create-vendor,
 // update-vendor, delete-vendor, and get-vendor. Syncs must keep those eight
 // tools snake_case (create_bill, and so on). File names stay hyphenated.
-export const qboTools: ToolDefinition<ZodType>[] = [
+const registeredTools: ToolDefinition<ZodType>[] = [
   CreateCustomerTool,
   GetCustomerTool,
   UpdateCustomerTool,
@@ -292,3 +293,17 @@ export const qboTools: ToolDefinition<ZodType>[] = [
   GetVendorExpensesTool,
   GetVendorBalanceTool,
 ];
+
+function bindCatalogHandler<T extends ToolDefinition<ZodType>>(tool: T): T {
+  const handler = tool.handler as (...args: unknown[]) => Promise<unknown>;
+
+  return {
+    ...tool,
+    handler: (async (...args: unknown[]) =>
+      markCatalogFailure(await handler(...args))) as T["handler"],
+  };
+}
+
+/** Same list the standalone server registers. Failures carry `isError: true`. */
+export const qboTools: ToolDefinition<ZodType>[] =
+  registeredTools.map(bindCatalogHandler);

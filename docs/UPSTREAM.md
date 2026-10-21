@@ -14,7 +14,7 @@ The standalone MCP server, OAuth browser flow, and `auth-server` are still in th
 
 | Area | Rule |
 | --- | --- |
-| New or changed tool, handler, or zod schema | Port into our catalog. Register it from `src/tools/catalog.ts` with `TOOL_META`. Keep bill and vendor CRUD names snake_case (table below). Add or extend a jest test under `tests/unit`. Do not paste the tool back into `src/index.ts`. |
+| New or changed tool, handler, or zod schema | Port into our catalog. Register it from `src/tools/catalog.ts` with `TOOL_META`. Keep bill and vendor CRUD names snake_case (table below). Add or extend a jest test under `tests/unit`. Do not paste the tool back into `src/index.ts`. Upstream handlers that return failure text (`Error creating bill`, `Invalid criteria: ...`) must be ported with `isError: true`. `markCatalogFailure` does that for text starting with `Error` or `Invalid criteria:`. A new failure prefix has to be added there. Do not leave the ported handler returning that text without `isError`. |
 | `node-quickbooks` request shape (entity, query, report, minorversion, format) | Port into `src/quickbooks-proxy.ts`, `src/quickbooks-method-specs.ts`, `src/query-defaults.ts`, `src/criteria-to-query.ts`, or `src/report-query.ts`. Keep the ISC credit header. Update `tests/unit/node-quickbooks-parity.test.ts`. |
 | `src/index.ts` wiring, `src/auth-server.ts`, `src/clients/quickbooks-oauth.ts`, `intuit-oauth` | Ignore. Those are the standalone server. ENT-894 removes them. A new tool that only shows up as an import in upstream `index.ts` is still ported, via the catalog, not via `index.ts`. |
 | `.github/workflows/claude.yml`, `.github/workflows/claude-code-review.yml` | Ignore. We deleted them. |
@@ -73,6 +73,7 @@ The proxy get trap only treats own properties of `QUICKBOOKS_METHOD_SPECS` as me
 - Middleware runs in registration order. The first `.use()` is outermost.
 - `withRequestId` and `withRetry` are exported and not applied by default. The order is `withRequestId(withRetry()(transport))`.
 - `formatError` is optional. Thrown errors use `{ isError: true, content: [{ type: "text", text }] }` when it is omitted. When it is set, thrown errors and returned `{ content, isError: true }` results both go through it. A returned MCP error is left unchanged when `formatError` is omitted.
+- Catalog handlers (embed and the standalone server) return `{ content, isError: true }` on failure. Success results omit `isError`. `src/tools/mark-catalog-failure.ts` adds the flag. Upstream syncs must keep that.
 
 `./embed` does not export `runWithQuickbooksContext` or `createQuickbooksProxy`. The public `Transport<TApp>` and `QboToolCallContext` require `app`.
 
