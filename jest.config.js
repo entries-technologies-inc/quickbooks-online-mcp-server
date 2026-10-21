@@ -54,6 +54,37 @@ export default {
       lines: 75,
       statements: 75,
     },
+    // search_accounts' field-type switches have a `default` arm the map can
+    // never select (string, number, boolean, date only). normalizeAccountCriteria's
+    // primitive fallthrough is also unreachable: the handler only normalizes
+    // values that already passed the record/array schema. The result list's
+    // `|| []` fallback is unreachable because a successful search returns an
+    // array, and Array.map returns an array. These floors are those dead arms.
+    './src/tools/search-accounts.tool.ts': {
+      branches: 89,
+      functions: 100,
+      lines: 95,
+      statements: 93,
+    },
+    // search_invoices appends `|| []` when the result list has no map. A
+    // successful search returns an array, so that fallback never runs.
+    './src/tools/search-invoices.tool.ts': {
+      branches: 90,
+      functions: 100,
+      lines: 100,
+      statements: 100,
+    },
+    // search_items' value-type switch has a number arm and a default arm the
+    // filter allow-list can never select: every allowed filter field is a
+    // string, boolean, or date in ITEM_FIELD_TYPE_MAP. The unknown-field
+    // return and the result list's `|| []` fallback are unreachable for the
+    // same reason. These floors are those dead arms.
+    './src/tools/search-items.tool.ts': {
+      branches: 84,
+      functions: 100,
+      lines: 94,
+      statements: 94,
+    },
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',

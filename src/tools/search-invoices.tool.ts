@@ -79,7 +79,9 @@ const filterSchema = z.object({
   }
 });
 
-const advancedCriteriaSchema = z.object({
+// The handler union matches any record before this schema, so these
+// refinements do not run on the tool path. Tests parse the schema directly.
+export const invoiceAdvancedCriteriaSchema = z.object({
   filters: z.array(filterSchema).optional(),
   asc: sortableFieldSchema.optional(),
   desc: sortableFieldSchema.optional(),
@@ -93,7 +95,7 @@ const advancedCriteriaSchema = z.object({
 const RUNTIME_CRITERIA_SCHEMA = z.union([
   z.record(z.string(), z.any()),
   z.array(z.record(z.string(), z.any())),
-  advancedCriteriaSchema,
+  invoiceAdvancedCriteriaSchema,
 ]);
 
 // Exposed schema – use broad type to prevent deep $ref issues

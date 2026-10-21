@@ -4,6 +4,10 @@
   "description": "MCP server implementation for QuickBooks Online integration",
   "license": "Apache-2.0",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./embed": "./dist/embed.js"
+  },
   "type": "module",
   "bin": "./dist/index.js",
   "files": [
