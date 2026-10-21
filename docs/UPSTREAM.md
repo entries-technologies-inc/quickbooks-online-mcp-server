@@ -72,7 +72,7 @@ The proxy get trap only treats own properties of `QUICKBOOKS_METHOD_SPECS` as me
 - `exclude`, `use`, `rename`, `override`, and `add` return a new catalog. `rename` accepts `(from, to)` or `(name) => string`. `add` and `rename` throw `Duplicate QuickBooks tool name "..."` when the result would have two tools with the same name.
 - Middleware runs in registration order. The first `.use()` is outermost.
 - `withRequestId` and `withRetry` are exported and not applied by default. The order is `withRequestId(withRetry()(transport))`.
-- `formatError` is optional. The default error shape is `{ isError: true, content: [{ type: "text", text }] }`.
+- `formatError` is optional. Thrown errors use `{ isError: true, content: [{ type: "text", text }] }` when it is omitted. When it is set, thrown errors and returned `{ content, isError: true }` results both go through it. A returned MCP error is left unchanged when `formatError` is omitted.
 
 `./embed` does not export `runWithQuickbooksContext` or `createQuickbooksProxy`. The public `Transport<TApp>` and `QboToolCallContext` require `app`.
 

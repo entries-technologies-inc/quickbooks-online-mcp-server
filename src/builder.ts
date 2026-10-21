@@ -28,7 +28,11 @@ export type QboToolsOptions<TApp = unknown> = {
   queryDefaults?: QueryDefaults;
   /**
    * Shapes a thrown middleware or handler error, including a missing `qbo`.
-   * Default: `{ isError: true, content: [{ type: "text", text }] }`.
+   * Also shapes a returned `{ content, isError: true }` result. That error is
+   * an `Error` whose message is the text content.
+   * When omitted, thrown errors use
+   * `{ isError: true, content: [{ type: "text", text }] }` and a returned
+   * `{ isError: true }` result is left as the handler returned it.
    */
   formatError?: QboFormatError;
 };
@@ -60,6 +64,36 @@ function defaultFormatCallError(error: unknown): unknown {
   };
 }
 
+function isReturnedMcpError(
+  result: unknown,
+): result is { content?: unknown; isError: true } {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    (result as { isError?: unknown }).isError === true
+  );
+}
+
+/** Message is the text parts of `content`, joined when there is more than one. */
+function errorFromReturnedMcpError(result: { content?: unknown }): Error {
+  const content = result.content;
+  if (!Array.isArray(content)) return new Error("Unknown error");
+
+  const texts: string[] = [];
+  for (const part of content) {
+    if (
+      typeof part === "object" &&
+      part !== null &&
+      (part as { type?: unknown }).type === "text" &&
+      typeof (part as { text?: unknown }).text === "string"
+    ) {
+      texts.push((part as { text: string }).text);
+    }
+  }
+
+  return new Error(texts.length > 0 ? texts.join("\n") : "Unknown error");
+}
+
 /** MCP tools are registered as `{ params }`. `run` speaks the inner object. */
 function paramsFromMcpArgs(args: unknown): unknown {
   return (args as { params: unknown }).params;
@@ -85,6 +119,7 @@ export class QboTools<TApp = unknown> {
     private readonly queryDefaults: QueryDefaults | undefined,
     tools: readonly QboTool[],
     private readonly formatCallError: QboFormatError = defaultFormatCallError,
+    private readonly formatReturnedErrors: boolean,
   ) {
     this.tools = tools;
   }
@@ -182,6 +217,7 @@ export class QboTools<TApp = unknown> {
       this.queryDefaults,
       tools,
       this.formatCallError,
+      this.formatReturnedErrors,
     );
   }
 
@@ -199,15 +235,22 @@ export class QboTools<TApp = unknown> {
     source: ContextSource<TApp>,
     extra?: unknown,
   ): Promise<unknown> {
+    let result: unknown;
     try {
       const resolved =
         typeof source === "function" ? await source(extra) : source;
       const ctx = extra === undefined ? resolved : { ...resolved, extra };
 
-      return await this.compose(tool)(args, ctx);
+      result = await this.compose(tool)(args, ctx);
     } catch (error) {
       return this.formatCallError(error, tool);
     }
+
+    if (this.formatReturnedErrors && isReturnedMcpError(result)) {
+      return this.formatCallError(errorFromReturnedMcpError(result), tool);
+    }
+
+    return result;
   }
 
   private compose(tool: QboTool): ToolRun<TApp> {
@@ -268,5 +311,6 @@ export function createQboTools<TApp = unknown>(
     options.queryDefaults,
     qboTools.map((tool) => attachToolMeta(tool)),
     options.formatError,
+    options.formatError !== undefined,
   );
 }

@@ -398,6 +398,131 @@ describe("library call shape", () => {
     ).resolves.toMatchObject({ custom: true, tool: "get_vendor" });
   });
 
+  it("formats a returned MCP error when formatError is set and leaves it when it is not", async () => {
+    const returned = {
+      isError: true as const,
+      content: [{ type: "text" as const, text: "Error creating bill" }],
+    };
+    let next: unknown = returned;
+    const seen: unknown[] = [];
+    const tools = createQboTools({
+      transport: async () => ({ status: 200, body: billBody }),
+      formatError: (error, tool) => {
+        seen.push(error);
+
+        return {
+          custom: true,
+          tool: tool.name,
+          message: error instanceof Error ? error.message : String(error),
+        };
+      },
+    }).override("create_bill", (async () => next) as QboTool["handler"]);
+    const run = () =>
+      tools.list().find((tool) => tool.name === "create_bill")?.run(
+        {},
+        { qbo: credentials, app: undefined },
+      );
+
+    await expect(run()).resolves.toEqual({
+      custom: true,
+      tool: "create_bill",
+      message: "Error creating bill",
+    });
+    expect(seen[0]).toBeInstanceOf(Error);
+    expect((seen[0] as Error).message).toBe("Error creating bill");
+
+    next = { content: [{ type: "text" as const, text: "created" }] };
+    await expect(run()).resolves.toEqual(next);
+
+    next = {
+      isError: true,
+      content: [
+        { type: "text", text: "line one" },
+        { type: "image", data: "x" },
+        null,
+        "nope",
+        { type: "text", text: 1 },
+        { type: "text" },
+        { type: "text", text: "line two" },
+      ],
+    };
+    await expect(run()).resolves.toEqual({
+      custom: true,
+      tool: "create_bill",
+      message: "line one\nline two",
+    });
+
+    next = { isError: true, content: [{ type: "image" }] };
+    await expect(run()).resolves.toMatchObject({ message: "Unknown error" });
+
+    next = { isError: true, content: "not-an-array" };
+    await expect(run()).resolves.toMatchObject({ message: "Unknown error" });
+
+    next = { isError: true };
+    await expect(run()).resolves.toMatchObject({ message: "Unknown error" });
+
+    next = null;
+    await expect(run()).resolves.toBeNull();
+
+    next = "ok";
+    await expect(run()).resolves.toBe("ok");
+
+    const throwing = tools.use(
+      wrapRun(() => async () => {
+        throw new Error("from middleware");
+      }),
+    );
+    await expect(
+      throwing.list().find((tool) => tool.name === "create_bill")?.run(
+        {},
+        { qbo: credentials, app: undefined },
+      ),
+    ).resolves.toEqual({
+      custom: true,
+      tool: "create_bill",
+      message: "from middleware",
+    });
+
+    const branched = tools.exclude("get_bill");
+    next = returned;
+    await expect(
+      branched.list().find((tool) => tool.name === "create_bill")?.run(
+        {},
+        { qbo: credentials, app: undefined },
+      ),
+    ).resolves.toEqual({
+      custom: true,
+      tool: "create_bill",
+      message: "Error creating bill",
+    });
+
+    const plain = createQboTools({
+      transport: async () => ({ status: 200, body: billBody }),
+    }).override("create_bill", async () => returned);
+    await expect(
+      plain.list().find((tool) => tool.name === "create_bill")?.run(
+        {},
+        { qbo: credentials, app: undefined },
+      ),
+    ).resolves.toBe(returned);
+
+    const failed = await (
+      plain.handlers({
+        context: { qbo: credentials, app: undefined },
+      })["create_bill"] as (args: unknown) => Promise<unknown>
+    )({ params: {} });
+    expect(failed).toBe(returned);
+
+    const thrown = (await (
+      plain.override("create_bill", async () => {
+        throw new Error("boom");
+      }).handlers({
+        context: { qbo: credentials, app: undefined },
+      })["create_bill"] as (args: unknown) => Promise<unknown>
+    )({ params: {} })) as { content: Array<{ text: string }> };
+    expect(thrown.content[0]?.text).toBe("Error: boom");
+  });
+
   it("types a catalog and calls a transport without a transport field", async () => {
     const ctx: QboCallContext<{ userId: string }> = {
       realmId: "realm-1",

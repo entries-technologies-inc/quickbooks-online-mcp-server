@@ -29,7 +29,7 @@ await bill?.run(
 );
 ```
 
-`run(params, ctx)` takes the tool's params directly (`{ id: "1" }` for get_bill). `wrapRun` receives that same object as `args`. A thrown handler comes back as `{ isError: true, content: [{ type: "text", text }] }` unless you pass `formatError`.
+`run(params, ctx)` takes the tool's params directly (`{ id: "1" }` for get_bill). `wrapRun` receives that same object as `args`. A thrown handler comes back as `{ isError: true, content: [{ type: "text", text }] }` unless you pass `formatError`. A handler that returns `{ content, isError: true }` goes through that same `formatError`. With no `formatError`, that returned result is left as the handler wrote it.
 
 ## Transport
 
@@ -329,7 +329,7 @@ const tools = createQboTools<App>({
 });
 ```
 
-`formatError` is `(error, tool) => unknown`. A branched catalog keeps the same function. QuickBooks faults that a handler catches itself are whatever content that handler returns.
+`formatError` is `(error, tool) => unknown`. A branched catalog keeps the same function. It runs for a throw and for a returned MCP error result (`{ content, isError: true }`). The value passed for a returned result is an `Error` whose message is the text content, for example `Error creating bill`. Several text parts are joined with newlines. Content that is not text becomes `Unknown error`. When `formatError` is omitted, a returned `{ isError: true }` result is unchanged. Catalog tools that catch a QuickBooks fault and return `{ content }` without `isError` are unchanged either way.
 
 ## Tool metadata
 
