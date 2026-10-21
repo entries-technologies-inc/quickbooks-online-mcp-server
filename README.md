@@ -415,7 +415,7 @@ QUICKBOOKS_ENVIRONMENT=sandbox  # or 'production'
 
 ## Embed
 
-Library guide: [docs/LIBRARY.md](docs/LIBRARY.md).
+Library guide: [docs/LIBRARY.md](docs/LIBRARY.md). Upstream sync: [docs/UPSTREAM.md](docs/UPSTREAM.md).
 
 `createQboTools` is exported from `@qboapi/qbo-mcp-server` and from `@qboapi/qbo-mcp-server/embed` (both are `dist/embed.js`). You pass a `Transport`. The library calls that function raw: it does not add retries or a QuickBooks `requestid` unless you wrap the transport yourself.
 

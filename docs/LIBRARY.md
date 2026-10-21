@@ -10,7 +10,7 @@ Package: `@qboapi/qbo-mcp-server`. `zod` is a peer dependency. `npm run build` e
 
 Build one catalog and call it with a fresh context. Do not rebuild the 142 tools when a token changes.
 
-Catalog tool names are snake_case (`get_bill`, `create_vendor`). Upstream still registers eight bill and vendor tools with hyphens (`create-bill`, `update-bill`, `delete-bill`, `get-bill`, `create-vendor`, `update-vendor`, `delete-vendor`, `get-vendor`). Syncs from upstream must keep those names snake_case. `rename(from, to)` and `rename(fn)` stay available when a caller wants a different name.
+Catalog tool names are snake_case (`get_bill`, `create_vendor`). Upstream still registers eight bill and vendor tools with hyphens (`create-bill`, `update-bill`, `delete-bill`, `get-bill`, `create-vendor`, `update-vendor`, `delete-vendor`, `get-vendor`). Syncs from upstream must keep those names snake_case. `rename(from, to)` and `rename(fn)` stay available when a caller wants a different name. How this fork differs from upstream, and how to merge it: [docs/UPSTREAM.md](UPSTREAM.md).
 
 ## Quick start
 
