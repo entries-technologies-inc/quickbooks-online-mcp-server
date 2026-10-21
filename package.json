@@ -3,9 +3,13 @@
   "version": "0.0.1",
   "description": "MCP server implementation for QuickBooks Online integration",
   "license": "Apache-2.0",
-  "main": "dist/index.js",
+  "main": "./dist/embed.js",
   "exports": {
-    ".": "./dist/index.js",
+    ".": {
+      "types": "./dist/embed.d.ts",
+      "import": "./dist/embed.js",
+      "default": "./dist/embed.js"
+    },
     "./embed": {
       "types": "./dist/embed.d.ts",
       "import": "./dist/embed.js",
@@ -13,7 +17,6 @@
     }
   },
   "type": "module",
-  "bin": "./dist/index.js",
   "files": [
     "dist"
   ],
@@ -23,7 +26,6 @@
     "watch": "tsc --watch",
     "lint:fix": "eslint --fix",
     "lint": "eslint .",
-    "auth": "node dist/auth-server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"

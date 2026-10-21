@@ -106,6 +106,11 @@ export class QboTools<TApp = unknown> {
   }
 
   add(tool: QboTool): QboTools<TApp> {
+    assertUniqueToolNames([
+      ...this.tools.map((existing) => existing.name),
+      tool.name,
+    ]);
+
     return this.branch([...this.tools, tool]);
   }
 
@@ -120,12 +125,21 @@ export class QboTools<TApp = unknown> {
     to?: string,
   ): QboTools<TApp> {
     if (typeof fromOrMap === "function") {
-      return this.use((tool) => {
+      const renamed = this.tools.map((tool) => {
         const next = fromOrMap(tool.name);
 
         return next === tool.name ? tool : { ...tool, name: next };
       });
+      assertUniqueToolNames(renamed.map((tool) => tool.name));
+
+      return this.branch(renamed);
     }
+
+    assertUniqueToolNames(
+      this.tools.map((tool) =>
+        tool.name === fromOrMap ? (to as string) : tool.name,
+      ),
+    );
 
     return this.use(renameTool(fromOrMap, to as string));
   }
@@ -233,6 +247,16 @@ export class QboTools<TApp = unknown> {
       (next, layer) => layer(next, tool) as ToolRun<TApp>,
       terminal,
     );
+  }
+}
+
+function assertUniqueToolNames(names: readonly string[]): void {
+  const seen = new Set<string>();
+  for (const name of names) {
+    if (seen.has(name)) {
+      throw new Error(`Duplicate QuickBooks tool name "${name}"`);
+    }
+    seen.add(name);
   }
 }
 

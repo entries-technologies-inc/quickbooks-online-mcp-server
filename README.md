@@ -104,6 +104,8 @@ Add to your Claude Code MCP configuration:
 
 Set any of the `DISABLE_*` flags to `"true"` to prevent that category of tools from being registered. Read tools (`get_*`, `search_*`) are always available.
 
+This package does not build the standalone server. `npm run build` emits the embed entry (`dist/embed.js`), not `dist/index.js`. There is no package `bin` and no `npm run auth`. The standalone server source is still in the repo; removing it is tracked in ENT-894.
+
 ---
 
 ## Available Tools
@@ -383,7 +385,7 @@ If you only want to read your own company's data, you still need to set up an ap
 3. Get your **Client ID** and **Client Secret** from the app's **Keys & Credentials** page (Development keys)
 4. Create or use a sandbox company under the **Sandbox** top-level menu item in the dev portal
 5. Set `QUICKBOOKS_ENVIRONMENT=sandbox` in your `.env`
-6. Run `npm run auth` to complete the OAuth handshake — your browser will open, you sign in to the sandbox company, tokens are saved to `.env`
+6. Put the sandbox tokens in `.env` (below). This package does not build the standalone server, so it has no `npm run auth` and no `bin`. That follow-up is ENT-894.
 
 ### Production Setup
 
@@ -415,7 +417,7 @@ QUICKBOOKS_ENVIRONMENT=sandbox  # or 'production'
 
 Library guide: [docs/LIBRARY.md](docs/LIBRARY.md).
 
-`createQboTools` is exported from `@qboapi/qbo-mcp-server/embed` (`dist/embed.js`). You pass a `Transport`. The library calls that function raw: it does not add retries or a QuickBooks `requestid` unless you wrap the transport yourself. The CLI does not wrap it either.
+`createQboTools` is exported from `@qboapi/qbo-mcp-server` and from `@qboapi/qbo-mcp-server/embed` (both are `dist/embed.js`). You pass a `Transport`. The library calls that function raw: it does not add retries or a QuickBooks `requestid` unless you wrap the transport yourself.
 
 Two opt-in middlewares are on the same entry.
 
@@ -438,7 +440,7 @@ const tools = createQboTools({ transport });
 
 `withRequestId` runs once, around `withRetry`, so every retry of a write sends the same `requestid`. QuickBooks uses that value as an idempotency key. `withRetry` will not retry a write until `query.requestid` is already on the request it was given. Putting `withRequestId` inside `withRetry` hides the id from that check, so the write is not retried. Generating a new id on each attempt would also make a replay look like a different write, and QuickBooks could apply it twice.
 
-`npm run build` (`tsc`) emits `dist/embed.js` and `dist/embed.d.ts`, plus declarations for the types that entry re-exports. `package.json` `exports["./embed"]` points `types` at the declaration file and `import` / `default` at the JavaScript. `prepare` is that same build, so a git SHA install produces the declarations before the package is packed. The CLI entry is still excluded from this emit.
+`npm run build` (`tsc`) emits `dist/embed.js` and `dist/embed.d.ts`, plus declarations for the types that entry re-exports. `package.json` `main` and `exports["."]` use the same `types` / `import` / `default` shape as `exports["./embed"]`. There is no `bin` and no `auth` script. The standalone server source is still in the repo and is not emitted; that follow-up is ENT-894. `prepare` is that same build, so a git SHA install produces the declarations before the package is packed.
 
 Build the catalog once. Pass credentials per call instead of rebuilding all 142 tools when the token changes.
 
@@ -446,20 +448,18 @@ Build the catalog once. Pass credentials per call instead of rebuilding all 142 
 import {
   createQboTools,
   isWrite,
-  type QboEmbedContext,
 } from "@qboapi/qbo-mcp-server/embed";
 
 const tools = createQboTools({ transport }).exclude(isWrite());
 
 const bill = tools.list().find((tool) => tool.name === "get_bill");
-await bill?.run({ params: { id: "1" } }, {
-  accessToken,
-  realmId,
-  isSandbox: true,
-});
+await bill?.run(
+  { id: "1" },
+  { qbo: { accessToken, realmId, isSandbox: true } },
+);
 ```
 
-`run(args, context)` uses the builder's transport. `context.queryDefaults`, when set, overrides the defaults passed to `createQboTools`. A thrown handler becomes `{ isError: true, content: [{ type: "text", text }] }`, the same shape `register` returns. `.use()` and `wrapRun` wrap the handler `run` calls.
+`run(params, ctx)` takes the tool params directly. Credentials go on `ctx.qbo`. `ctx.qbo.queryDefaults`, when set, overrides the defaults passed to `createQboTools`. A thrown handler becomes `{ isError: true, content: [{ type: "text", text }] }`, the same shape `register` returns. `.use()` and `wrapRun` wrap the handler `run` calls.
 
 `register(server, { context })` and `handlers({ context })` still accept a `QboEmbedContext` object. `context` may also be `(extra) => QboEmbedContext | Promise<QboEmbedContext>`, called on every invocation. `extra` is the MCP request extra.
 

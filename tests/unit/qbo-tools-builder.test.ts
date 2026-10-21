@@ -138,6 +138,19 @@ describe("createQboTools", () => {
     });
     expect(added.list().map((tool) => tool.name)).toContain("get_custom");
     expect(tools.list().map((tool) => tool.name)).not.toContain("get_custom");
+    expect(() => added.add(bill as QboTool)).toThrow(
+      'Duplicate QuickBooks tool name "get_bill"',
+    );
+    expect(() => added.rename("get_custom", "get_bill")).toThrow(
+      'Duplicate QuickBooks tool name "get_bill"',
+    );
+    expect(() =>
+      added.rename((toolName) =>
+        toolName === "get_custom" ? "get_bill" : toolName,
+      ),
+    ).toThrow('Duplicate QuickBooks tool name "get_bill"');
+    expect(added.list().map((tool) => tool.name)).toContain("get_custom");
+    expect(added.list().map((tool) => tool.name)).toContain("get_bill");
     expect(() => tools.override("not-registered", bill!.handler)).toThrow(
       'Unknown QuickBooks tool "not-registered"',
     );
@@ -447,10 +460,15 @@ describe("embed import graph", () => {
   });
 
   it("runs a listed tool with per-call context and applies wrapRun", async () => {
-    const seen: Array<{ realmId: string; minorversion?: string }> = [];
+    const seen: Array<{
+      accessToken: string;
+      realmId: string;
+      minorversion?: string;
+    }> = [];
     const tools = createQboTools({
       transport: async (request, callContext) => {
         seen.push({
+          accessToken: callContext.accessToken ?? "",
           realmId: callContext.realmId,
           minorversion: request.query?.minorversion,
         });
@@ -469,11 +487,12 @@ describe("embed import graph", () => {
 
     const first = (await bill?.run(
       { id: "1" },
-      withQbo({ realmId: "realm-a" }),
+      withQbo({ accessToken: "token-a", realmId: "realm-a" }),
     )) as { content: Array<{ text: string }> };
     const second = await bill?.run(
       { id: "2" },
       withQbo({
+        accessToken: "token-b",
         realmId: "realm-b",
         queryDefaults: { minorversion: "76", format: false },
       }),
@@ -485,8 +504,8 @@ describe("embed import graph", () => {
     );
     expect(second).toBeDefined();
     expect(seen).toEqual([
-      { realmId: "realm-a", minorversion: "73" },
-      { realmId: "realm-b", minorversion: "76" },
+      { accessToken: "token-a", realmId: "realm-a", minorversion: "73" },
+      { accessToken: "token-b", realmId: "realm-b", minorversion: "76" },
     ]);
 
     const failingTools = wrappedTools.use(

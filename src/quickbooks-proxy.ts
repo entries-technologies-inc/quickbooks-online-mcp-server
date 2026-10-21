@@ -486,8 +486,12 @@ export function createQuickbooksProxy(
       if (typeof property !== "string") {
         return Reflect.get(current, property, receiver);
       }
+      if (
+        !Object.prototype.hasOwnProperty.call(QUICKBOOKS_METHOD_SPECS, property)
+      ) {
+        return Reflect.get(current, property, receiver);
+      }
       const spec = QUICKBOOKS_METHOD_SPECS[property];
-      if (!spec) return undefined;
 
       return (...args: unknown[]) => invoke(context, spec, args);
     },

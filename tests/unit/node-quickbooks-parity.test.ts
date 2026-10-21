@@ -834,4 +834,24 @@ describe("node-quickbooks parity", () => {
     expect(seen[0]?.query).toEqual({ minorversion: "73" });
     expect(seen[0]?.op).toEqual({ kind: "get", entity: "Bill" });
   });
+
+  it("does not call the transport for inherited object methods", async () => {
+    const seen: string[] = [];
+    const proxy = createQuickbooksProxy({
+      realmId: REALM,
+      transport: async (request) => {
+        seen.push(request.path);
+        return { status: 200, body: {} };
+      },
+    });
+
+    expect(String(proxy)).toBe("[object Object]");
+    expect(proxy.toString()).toBe("[object Object]");
+    expect(seen).toEqual([]);
+
+    await new Promise<void>((resolve) => {
+      proxy.getBill("1", () => resolve());
+    });
+    expect(seen).toEqual(["/bill/1"]);
+  });
 });
