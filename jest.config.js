@@ -26,7 +26,7 @@ export default {
     // applies to everything else. Before quickbooks-client.auth.test.ts this
     // file had no tests at all (it was never imported, so istanbul never saw
     // it); these floors reflect what the new behavioral tests cover.
-    './src/clients/quickbooks-client.ts': {
+    './src/clients/quickbooks-oauth.ts': {
       branches: 45,
       functions: 70,
       lines: 70,

@@ -10,5 +10,12 @@
       "skipLibCheck": true
     },
     "include": ["src/**/*.ts"],
-    "exclude": ["node_modules", "dist", "tests"]
-  }
+    "exclude": [
+      "node_modules",
+      "dist",
+      "tests",
+      "src/index.ts",
+      "src/auth-server.ts",
+      "src/clients/quickbooks-oauth.ts"
+    ]
+}

@@ -86,7 +86,7 @@ jest.unstable_mockModule('http', () => ({
   },
 }));
 
-const { quickbooksClient } = await import('../../../src/clients/quickbooks-client');
+const { quickbooksClient } = await import('../../../src/clients/quickbooks-oauth');
 
 describe('saveTokensToEnv (via authenticate)', () => {
   beforeEach(() => {

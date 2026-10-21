@@ -4,7 +4,7 @@
 
 **A comprehensive Model Context Protocol (MCP) server for QuickBooks Online**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Tools](https://img.shields.io/badge/Tools-145-green.svg)](#available-tools)
 [![Entities](https://img.shields.io/badge/Entities-29-orange.svg)](#entities)
 [![Reports](https://img.shields.io/badge/Reports-11-purple.svg)](#reports)
@@ -494,7 +494,7 @@ New tools that do not follow this convention will not be correctly categorised a
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Apache-2.0 License - see [LICENSE](LICENSE) for details.
 
 ---
 

@@ -203,6 +203,13 @@ import { GetCustomerBalanceTool } from "./tools/get-customer-balance.tool.js";
 import { GetAgedPayablesTool } from "./tools/get-aged-payables.tool.js";
 import { GetVendorExpensesTool } from "./tools/get-vendor-expenses.tool.js";
 import { GetVendorBalanceTool } from "./tools/get-vendor-balance.tool.js";
+import { registerQuickbooksOAuthFallback } from "./clients/quickbooks-client.js";
+import { QuickbooksClient as OauthQuickbooksClient } from "./clients/quickbooks-oauth.js";
+
+registerQuickbooksOAuthFallback({
+  getInstance: () => OauthQuickbooksClient.getInstance(),
+  getAuthCredentials: () => OauthQuickbooksClient.getAuthCredentials(),
+});
 
 const main = async () => {
   // Create an MCP server
@@ -219,14 +226,13 @@ const main = async () => {
   RegisterTool(server, UpdateEstimateTool);
   RegisterTool(server, DeleteEstimateTool);
   RegisterTool(server, SearchEstimatesTool);
-  
+
   // Add tools for bills
   RegisterTool(server, CreateBillTool);
   RegisterTool(server, UpdateBillTool);
   RegisterTool(server, DeleteBillTool);
   RegisterTool(server, GetBillTool);
   RegisterTool(server, SearchBillsTool);
-
 
   // Add tool to read a single invoice
   RegisterTool(server, ReadInvoiceTool);
