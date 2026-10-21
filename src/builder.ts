@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runWithQuickbooksContext } from "./clients/quickbooks-client.js";
-import { formatError } from "./helpers/format-error.js";
+import { formatError as formatErrorMessage } from "./helpers/format-error.js";
 import { RegisterTool } from "./helpers/register-tool.js";
 import {
   rename as renameTool,
@@ -21,9 +21,16 @@ export type { QboTool, QboCredentials, QboToolCallContext };
 /** Same shape as {@link QboToolCallContext}. */
 export type QboEmbedContext<TApp = unknown> = QboToolCallContext<TApp>;
 
+export type QboFormatError = (error: unknown, tool: QboTool) => unknown;
+
 export type QboToolsOptions<TApp = unknown> = {
   transport: Transport<TApp>;
   queryDefaults?: QueryDefaults;
+  /**
+   * Shapes a thrown middleware or handler error, including a missing `qbo`.
+   * Default: `{ isError: true, content: [{ type: "text", text }] }`.
+   */
+  formatError?: QboFormatError;
 };
 
 /** Resolved on each tool call. `extra` is the MCP request extra when registered. */
@@ -32,7 +39,8 @@ export type QboEmbedContextResolver<TApp = unknown> = (
 ) => QboToolCallContext<TApp> | Promise<QboToolCallContext<TApp>>;
 
 export type QboListedTool<TApp = unknown> = QboTool & {
-  run: (args: unknown, ctx: QboToolCallContext<TApp>) => Promise<unknown>;
+  /** `params` is the tool input, not an MCP `{ params }` wrapper. */
+  run: (params: unknown, ctx: QboToolCallContext<TApp>) => Promise<unknown>;
 };
 
 type ContextSource<TApp> =
@@ -44,6 +52,18 @@ type ExcludeSelector =
 
 export const MISSING_QBO_CONTEXT =
   "QuickBooks context missing: pass ctx.qbo or set it in middleware";
+
+function defaultFormatCallError(error: unknown): unknown {
+  return {
+    isError: true,
+    content: [{ type: "text" as const, text: formatErrorMessage(error) }],
+  };
+}
+
+/** MCP tools are registered as `{ params }`. `run` speaks the inner object. */
+function paramsFromMcpArgs(args: unknown): unknown {
+  return (args as { params: unknown }).params;
+}
 
 function toolIsExcluded(selector: ExcludeSelector): (tool: QboTool) => boolean {
   if (typeof selector === "string") return (tool) => tool.name === selector;
@@ -64,6 +84,7 @@ export class QboTools<TApp = unknown> {
     private readonly transport: Transport<TApp>,
     private readonly queryDefaults: QueryDefaults | undefined,
     tools: readonly QboTool[],
+    private readonly formatCallError: QboFormatError = defaultFormatCallError,
   ) {
     this.tools = tools;
   }
@@ -142,7 +163,12 @@ export class QboTools<TApp = unknown> {
   }
 
   private branch(tools: readonly QboTool[]): QboTools<TApp> {
-    return new QboTools(this.transport, this.queryDefaults, tools);
+    return new QboTools(
+      this.transport,
+      this.queryDefaults,
+      tools,
+      this.formatCallError,
+    );
   }
 
   private handlerInContext(
@@ -150,7 +176,7 @@ export class QboTools<TApp = unknown> {
     source: ContextSource<TApp>,
   ): QboTool["handler"] {
     return (async (args: unknown, extra?: unknown) =>
-      this.call(tool, args, source, extra)) as QboTool["handler"];
+      this.call(tool, paramsFromMcpArgs(args), source, extra)) as QboTool["handler"];
   }
 
   private async call(
@@ -166,10 +192,7 @@ export class QboTools<TApp = unknown> {
 
       return await this.compose(tool)(args, ctx);
     } catch (error) {
-      return {
-        isError: true,
-        content: [{ type: "text" as const, text: formatError(error) }],
-      };
+      return this.formatCallError(error, tool);
     }
   }
 
@@ -182,6 +205,7 @@ export class QboTools<TApp = unknown> {
         args: unknown,
         extra?: unknown,
       ) => Promise<unknown>;
+      const mcpArgs = { params: args };
 
       return runWithQuickbooksContext(
         {
@@ -194,7 +218,9 @@ export class QboTools<TApp = unknown> {
           app: ctx.app,
         },
         () =>
-          ctx.extra === undefined ? runTool(args) : runTool(args, ctx.extra),
+          ctx.extra === undefined
+            ? runTool(mcpArgs)
+            : runTool(mcpArgs, ctx.extra),
       );
     };
 
@@ -217,5 +243,6 @@ export function createQboTools<TApp = unknown>(
     options.transport,
     options.queryDefaults,
     qboTools.map((tool) => attachToolMeta(tool)),
+    options.formatError,
   );
 }

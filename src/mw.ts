@@ -8,6 +8,8 @@ export type QboCredentials = {
   isSandbox: boolean;
   baseUrl?: string;
   queryDefaults?: QueryDefaults;
+  /** Extra session fields may ride along. Callers do not have to copy them off. */
+  [extra: string]: unknown;
 };
 
 /**

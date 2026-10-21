@@ -10,7 +10,10 @@ import {
   withRequestId,
   withRetry,
   wrapRun,
+  type QboCallContext,
+  type QboListedTool,
   type QboTool,
+  type QboTools,
   type Transport,
 } from "../../src/embed.js";
 
@@ -82,7 +85,7 @@ describe("per-call app context", () => {
     const bill = tools.list().find((tool) => tool.name === "get-bill");
 
     await bill?.run(
-      { params: { id: "1" } },
+      { id: "1" },
       {
         qbo: credentials,
         app: { userId: "user-1", realmId: "realm-1" },
@@ -116,11 +119,11 @@ describe("per-call app context", () => {
     const bill = tools.list().find((tool) => tool.name === "get-bill");
 
     await bill?.run(
-      { params: { id: "1" } },
+      { id: "1" },
       { app: { userId: "user-1", realmId: "from-app" } },
     );
     await bill?.run(
-      { params: { id: "1" } },
+      { id: "1" },
       {
         qbo: { accessToken: "original", realmId: "original", isSandbox: false },
         app: { userId: "user-1", realmId: "replaced" },
@@ -147,7 +150,7 @@ describe("per-call app context", () => {
 
     await expect(
       stripped?.run(
-        { params: { id: "1" } },
+        { id: "1" },
         { qbo: credentials, app: undefined },
       ),
     ).resolves.toEqual(missingQbo);
@@ -162,7 +165,7 @@ describe("per-call app context", () => {
     const bill = bare.list().find((tool) => tool.name === "get-bill");
 
     await expect(
-      bill?.run({ params: { id: "1" } }, { app: undefined }),
+      bill?.run({ id: "1" }, { app: undefined }),
     ).resolves.toEqual(missingQbo);
     expect(called).toBe(0);
   });
@@ -193,7 +196,7 @@ describe("per-call app context", () => {
     const bill = tools.list().find((tool) => tool.name === "get-bill");
 
     await bill?.run(
-      { params: { id: "1" } },
+      { id: "1" },
       { qbo: credentials, app: undefined },
     );
 
@@ -230,7 +233,7 @@ describe("per-call app context", () => {
     const bill = tools.list().find((tool) => tool.name === "read_bill");
 
     await bill?.run(
-      { params: { id: "1" } },
+      { id: "1" },
       { qbo: credentials, app: undefined },
     );
 
@@ -306,6 +309,155 @@ describe("per-call app context", () => {
       { source: "handlers", extra: { requestId: "hand" }, realmId: "hand-realm" },
       { source: "handlers", extra: "transport", realmId: "hand-realm" },
     ]);
+  });
+});
+
+describe("library call shape", () => {
+  it("gives wrapRun the tool params from run and from the MCP handler", async () => {
+    const seen: unknown[] = [];
+    const tools = createQboTools({
+      transport: async () => ({ status: 200, body: billBody }),
+    }).use(
+      wrapRun((next) => async (args, ctx) => {
+        seen.push(args);
+
+        return next(args, ctx);
+      }),
+    );
+    await tools.list().find((tool) => tool.name === "get-bill")?.run(
+      { id: "1" },
+      { qbo: credentials, app: undefined },
+    );
+
+    const { registrations, server } = fakeServer();
+    tools.register(server, {
+      context: { qbo: credentials, app: undefined },
+    });
+    const registered = registrations.find((tool) => tool.name === "get-bill");
+    await registered?.handler({ params: { id: "7" } });
+
+    expect(seen).toEqual([{ id: "1" }, { id: "7" }]);
+  });
+
+  it("formats throws from middleware, handlers, and a missing qbo", async () => {
+    const base = createQboTools({
+      transport: async () => ({ status: 200, body: billBody }),
+      formatError: (error, tool) => ({
+        custom: true,
+        tool: tool.name,
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    });
+    const bill = base.list().find((tool) => tool.name === "get-bill");
+
+    await expect(
+      bill?.run({ id: "1" }, { app: undefined }),
+    ).resolves.toEqual({
+      custom: true,
+      tool: "get-bill",
+      message:
+        "QuickBooks context missing: pass ctx.qbo or set it in middleware",
+    });
+
+    const throwing = base.use(
+      wrapRun(() => async () => {
+        throw new Error("from middleware");
+      }),
+    );
+    await expect(
+      throwing.list().find((tool) => tool.name === "get-bill")?.run(
+        { id: "1" },
+        { qbo: credentials, app: undefined },
+      ),
+    ).resolves.toEqual({
+      custom: true,
+      tool: "get-bill",
+      message: "from middleware",
+    });
+
+    const overridden = base.override("get-bill", async () => {
+      throw new Error("from handler");
+    });
+    const failed = await (
+      overridden.handlers({
+        context: { qbo: credentials, app: undefined },
+      })["get-bill"] as (args: unknown, extra?: unknown) => Promise<unknown>
+    )({ params: { id: "1" } });
+    expect(failed).toEqual({
+      custom: true,
+      tool: "get-bill",
+      message: "from handler",
+    });
+
+    const branched = base.exclude("create-bill");
+    await expect(
+      branched.list().find((tool) => tool.name === "get-vendor")?.run(
+        { id: "1" },
+        { app: undefined },
+      ),
+    ).resolves.toMatchObject({ custom: true, tool: "get-vendor" });
+  });
+
+  it("types a catalog and calls a transport without a transport field", async () => {
+    const ctx: QboCallContext<{ userId: string }> = {
+      realmId: "realm-1",
+      accessToken: "token",
+      baseUrl: "https://sandbox-quickbooks.api.intuit.com",
+      isSandbox: true,
+      app: { userId: "user-1" },
+    };
+    const direct: Transport<{ userId: string }> = async (_request, callContext) => {
+      const userId: string = callContext.app.userId;
+      expect(userId).toBe("user-1");
+      expect(callContext.realmId).toBe("realm-1");
+
+      return { status: 200, body: billBody };
+    };
+    await direct(
+      { op: { kind: "get", entity: "Bill" }, method: "GET", path: "/bill/1" },
+      ctx,
+    );
+
+    let seenArgs: unknown;
+    const catalog: QboTools<{ userId: string }> = createQboTools<{
+      userId: string;
+    }>({
+      transport: async (_request, callContext) => {
+        const userId: string = callContext.app.userId;
+        expect(userId).toBe("user-1");
+        expect(callContext).not.toHaveProperty("transport");
+
+        return { status: 200, body: billBody };
+      },
+    }).use(
+      wrapRun((next) => async (args, callCtx) => {
+        seenArgs = args;
+        const userId: string = callCtx.app.userId;
+        expect(userId).toBe("user-1");
+
+        return next(args, callCtx);
+      }),
+    );
+    const listed: QboListedTool<{ userId: string }>[] = catalog.list();
+    const bill = listed.find((tool) => tool.name === "get-bill");
+
+    await bill?.run(
+      { id: "1" },
+      {
+        qbo: {
+          accessToken: "token",
+          realmId: "realm-1",
+          isSandbox: true,
+          connectionId: "conn-1",
+        },
+        app: { userId: "user-1" },
+      },
+    );
+
+    expect(seenArgs).toEqual({ id: "1" });
+    expect(catalog.list().some((tool) => tool.name === "create-bill")).toBe(
+      true,
+    );
   });
 });
 

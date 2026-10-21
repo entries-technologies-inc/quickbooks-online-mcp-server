@@ -31,7 +31,6 @@ export type QboHttpResponse = {
 
 export type QboCallContext<TApp = unknown> = {
   realmId: string;
-  transport: Transport<TApp>;
   accessToken?: string;
   isSandbox?: boolean;
   baseUrl?: string;

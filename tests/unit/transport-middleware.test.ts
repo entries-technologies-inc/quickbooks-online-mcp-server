@@ -13,7 +13,9 @@ import type {
 
 const context: QboCallContext = {
   realmId: "123",
-  transport: async () => ({ status: 200, body: null }),
+  accessToken: "token",
+  baseUrl: "https://sandbox-quickbooks.api.intuit.com",
+  isSandbox: true,
   app: undefined,
 };
 

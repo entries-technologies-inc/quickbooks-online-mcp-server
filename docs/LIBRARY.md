@@ -19,7 +19,7 @@ const tools = createQboTools<App>({ transport }).exclude(isWrite());
 
 const bill = tools.list().find((tool) => tool.name === "get-bill");
 await bill?.run(
-  { params: { id: "1" } },
+  { id: "1" },
   {
     qbo: { accessToken, realmId, isSandbox: true },
     app,
@@ -27,7 +27,7 @@ await bill?.run(
 );
 ```
 
-`run` arguments are `{ params }` matching the tool's zod schema. A thrown handler comes back as `{ isError: true, content: [{ type: "text", text }] }`.
+`run(params, ctx)` takes the tool's params directly (`{ id: "1" }` for get-bill). `wrapRun` receives that same object as `args`. A thrown handler comes back as `{ isError: true, content: [{ type: "text", text }] }` unless you pass `formatError`.
 
 ## Transport
 
@@ -40,7 +40,7 @@ type Transport<TApp> = (
 
 `request` is `{ op, method, path, query?, body?, accept? }`. `path` is the QuickBooks path (`/bill/1`, `/query`, `/reports/ProfitAndLoss`), not a full URL. `op.kind` is `get`, `query`, `report`, `create`, `update`, `delete`, or `void`. For entities, `op.entity` is the Intuit name (`Bill`, `BillPayment`), not the URL slug. Reports use `op.report`.
 
-`ctx` carries `app` plus `realmId`, `accessToken`, `isSandbox`, `baseUrl`, and `queryDefaults`. The library fills those from `ctx.qbo` on the tool call before your transport runs. It also applies query defaults (`minorversion`, `format`) onto `request.query` first.
+`ctx` carries `app` plus `realmId`, `accessToken`, `isSandbox`, `baseUrl`, and `queryDefaults`. It does not include the transport function. A unit test can call your transport with `{ realmId, accessToken, baseUrl, isSandbox, app }`. The library fills those fields from `ctx.qbo` before your transport runs, and applies query defaults (`minorversion`, `format`) onto `request.query` first.
 
 The library calls the transport raw. Retries and `requestid` are opt-in.
 
@@ -120,7 +120,7 @@ type QboToolCallContext<TApp> = {
 
 `qbo` and `app` stay separate. `qbo` may be omitted on the way in. The tool chain can set it. If it is still missing when the handler runs, the call fails with `QuickBooks context missing: pass ctx.qbo or set it in middleware`.
 
-`queryDefaults` on `qbo`, when set, overrides the defaults passed to `createQboTools`. `false` omits that query param.
+`queryDefaults` on `qbo`, when set, overrides the defaults passed to `createQboTools`. `false` omits that query param. `qbo` is structural: a session object with extra fields (a connection id, for example) can be passed as `ctx.qbo` without copying the credential fields off it.
 
 `extra` is the raw MCP request extra when the tool runs through `register` or `handlers`. `run` leaves it unset unless you set `ctx.extra` yourself. Middleware reads it on the context. It is not a second argument.
 
@@ -265,12 +265,12 @@ Listed tools:
 ```ts
 const listed = tools.list();
 await listed.find((tool) => tool.name === "get-bill")?.run(
-  { params: { id: "1" } },
+  { id: "1" },
   { qbo, app },
 );
 ```
 
-`list()` returns a new array. Mutating that array does not change the builder.
+`list()` returns a new array. Mutating that array does not change the builder. `QboTools<App>` and `QboListedTool<App>` are exported from `./embed` for a catalog parameter.
 
 Register on an MCP server. `context` is an object or `(extra) => ctx | Promise<ctx>`, called on every invocation. `extra` is also stored on `ctx.extra`.
 
@@ -280,7 +280,7 @@ tools.register(server, {
 });
 ```
 
-Handlers are the same functions, keyed by tool name. The MCP handler is still `(args, extra) => result`.
+Handlers are the MCP functions, keyed by tool name. The MCP handler is still `(args, extra) => result`, and `args` is `{ params }` because that is how the tool is registered. `run` does not use that wrapper. The library unwraps `params` before `wrapRun`, and wraps them again only when it calls the original handler.
 
 ```ts
 const handlers = tools.handlers({ context: { qbo, app } });
@@ -289,7 +289,7 @@ await handlers["get-bill"]?.({ params: { id: "1" } }, extra);
 
 ## Another framework
 
-`list().map` is the adapter. The zod schema is the `params` object, so wrap the model's arguments.
+`list().map` is the adapter. The zod schema is the tool params, and `run` takes those params directly.
 
 ```ts
 import { tool } from "ai";
@@ -300,7 +300,7 @@ const aiTools = Object.fromEntries(
     tool({
       description: qboTool.description,
       inputSchema: qboTool.schema,
-      execute: (params) => qboTool.run({ params }, { qbo, app }),
+      execute: (params) => qboTool.run(params, { qbo, app }),
     }),
   ]),
 );
@@ -308,13 +308,26 @@ const aiTools = Object.fromEntries(
 
 ## Errors
 
-`run`, `register`, and `handlers` catch throws. The result is:
+`run`, `register`, and `handlers` catch throws from middleware and from the tool handler, including a missing `qbo`. The default result is:
 
 ```ts
 { isError: true, content: [{ type: "text", text: "Error: <message>" }] }
 ```
 
-That includes a missing `qbo`, a throw inside `wrapRun`, and a throw from the tool handler. QuickBooks faults that a handler catches itself are whatever content that handler returns.
+Pass `formatError` to return your own shape instead of catching around `run`:
+
+```ts
+const tools = createQboTools<App>({
+  transport,
+  formatError: (error, tool) => ({
+    isError: true,
+    tool: tool.name,
+    message: error instanceof Error ? error.message : String(error),
+  }),
+});
+```
+
+`formatError` is `(error, tool) => unknown`. A branched catalog keeps the same function. QuickBooks faults that a handler catches itself are whatever content that handler returns.
 
 ## Tool metadata
 

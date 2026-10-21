@@ -34,7 +34,10 @@ import type {
   QboCallContext,
   QboHttpRequest,
   QboOperation,
+  Transport,
 } from "./transport.js";
+
+type ProxyCallContext = QboCallContext<any> & { transport: Transport<any> };
 
 type QboCallback = (error: unknown, data?: unknown, response?: unknown) => void;
 
@@ -103,7 +106,7 @@ function liftEntityQueryFlags(
 }
 
 async function execute(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   request: QboHttpRequest,
 ): Promise<RawResult> {
   const prepared: QboHttpRequest = {
@@ -112,7 +115,8 @@ async function execute(
   };
 
   try {
-    const response = await context.transport(prepared, context);
+    const { transport, ...callContext } = context;
+    const response = await transport(prepared, callContext);
     const body = response.body;
     if (response.status < 200 || response.status >= 300) {
       return {
@@ -171,7 +175,7 @@ function operationFor(
 }
 
 function send(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   kind: QboOperation["kind"],
   entityName: string,
   method: "GET" | "POST",
@@ -196,7 +200,7 @@ function send(
 }
 
 function read(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   entityName: string,
   id: unknown,
   callback: unknown,
@@ -215,7 +219,7 @@ function read(
 }
 
 function create(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   entityName: string,
   entity: unknown,
   callback: unknown,
@@ -240,7 +244,7 @@ function missingIdentity(value: unknown): boolean {
 }
 
 function update(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   entityName: string,
   entity: Record<string, any>,
   callback: unknown,
@@ -292,7 +296,7 @@ function update(
 }
 
 function postOperation(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   kind: "delete" | "void",
   entityName: string,
   entity: unknown,
@@ -313,7 +317,7 @@ function postOperation(
 }
 
 function deleteOrVoid(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   kind: "delete" | "void",
   entityName: string,
   idOrEntity: unknown,
@@ -335,7 +339,7 @@ function deleteOrVoid(
 }
 
 async function runQuery(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   entityName: string,
   rawCriteria: unknown,
 ): Promise<unknown> {
@@ -385,7 +389,7 @@ async function runQuery(
 }
 
 function find(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   entityName: string,
   criteria: unknown,
   callback: unknown,
@@ -403,7 +407,7 @@ function find(
 }
 
 function report(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   reportName: string,
   options: unknown,
   callback: unknown,
@@ -424,7 +428,7 @@ function report(
 }
 
 function invoke(
-  context: QboCallContext<any>,
+  context: ProxyCallContext,
   spec: MethodSpec,
   args: unknown[],
 ): void {
@@ -471,9 +475,9 @@ function invoke(
 }
 
 export function createQuickbooksProxy(
-  input: Omit<QboCallContext<any>, "app"> & { app?: unknown },
+  input: Omit<ProxyCallContext, "app"> & { app?: unknown },
 ): QuickbooksProxy {
-  const context: QboCallContext<any> = { ...input, app: input.app };
+  const context: ProxyCallContext = { ...input, app: input.app };
   const target = { realmId: context.realmId };
 
   return new Proxy(target, {

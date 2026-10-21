@@ -3,9 +3,11 @@ export {
   type QboCredentials,
   type QboEmbedContext,
   type QboEmbedContextResolver,
+  type QboFormatError,
   type QboListedTool,
   type QboTool,
   type QboToolCallContext,
+  type QboTools,
   type QboToolsOptions,
 } from "./builder.js";
 export {

@@ -468,11 +468,11 @@ describe("embed import graph", () => {
     const bill = wrappedTools.list().find((tool) => tool.name === "get-bill");
 
     const first = (await bill?.run(
-      { params: { id: "1" } },
+      { id: "1" },
       withQbo({ realmId: "realm-a" }),
     )) as { content: Array<{ text: string }> };
     const second = await bill?.run(
-      { params: { id: "2" } },
+      { id: "2" },
       withQbo({
         realmId: "realm-b",
         queryDefaults: { minorversion: "76", format: false },
@@ -496,7 +496,7 @@ describe("embed import graph", () => {
     );
     const failing = failingTools.list().find((tool) => tool.name === "get-bill");
     await expect(
-      failing?.run({ params: { id: "1" } }, withQbo()),
+      failing?.run({ id: "1" }, withQbo()),
     ).resolves.toEqual({
       isError: true,
       content: [{ type: "text", text: "Error: wrapped" }],
@@ -504,7 +504,7 @@ describe("embed import graph", () => {
     // The first wrapRun is outermost, so it runs before the throwing one.
     expect(wrapped).toBe(3);
     expect(seen).toHaveLength(2);
-    await bill?.run({ params: { id: "1" } }, withQbo({ realmId: "realm-a" }));
+    await bill?.run({ id: "1" }, withQbo({ realmId: "realm-a" }));
     expect(wrapped).toBe(4);
     expect(seen).toHaveLength(3);
   });
