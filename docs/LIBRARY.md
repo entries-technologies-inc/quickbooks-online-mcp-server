@@ -1,4 +1,33 @@
-# QuickBooks Online tools as a library
+# QuickBooks Online tools for AI agents
+
+This library gives your app a complete, customizable, and tested catalog of QuickBooks Online MCP tools (read, create, update and delete for bills, invoices, vendors, customers, accounts, reports and more) that you embed directly in your own server instead of running a separate MCP process. You bring the credentials per call, from your own OAuth or token store, and shape the catalog with plain functions: drop tools, rename them, rewrite descriptions or schemas, add access checks, inject context, and control errors, all in one ordered middleware chain. The same catalog can be registered on your own MCP server, turned into Vercel AI SDK or other framework tools with a plain `.map`, or called directly from code.
+
+## What you can build
+
+- **Background jobs and queues:** run tools straight from a worker (Inngest, BullMQ, cron) to reconcile overnight, chase overdue invoices or sync vendors, with safe retries and duplicate-write protection.
+- **Event-driven pipelines:** react to a QuickBooks webhook, a Stripe payment or an email by reading or updating invoices, bills and customers from code, with no model involved.
+- **A self-hosted MCP server:** a few lines on a home server or a $5 VPS that gives Claude Desktop or Cursor access to your own books.
+- **Serverless and edge functions:** each call carries its own credentials and the transport is plain `fetch`, so tools run fine in Lambda, Vercel or Cloudflare-style runtimes.
+- **Multi-company AI assistants:** one agent serving many QuickBooks companies, with access checks and client context added in middleware.
+- **Human-in-the-loop write flows:** swap the built-in create tools for draft-and-approve versions so nothing posts without sign-off.
+- **CLIs and scripts:** one-off migrations, bulk cleanups or month-end reports, written against the same tested tools instead of hand-rolled API calls.
+- **Testing and demos:** point the transport at a mock or the sandbox to build fixtures, or demo an integration without touching real books.
+
+## Features
+
+- **Embeddable:** runs inside your own app or server. There's no separate process to deploy or keep alive.
+- **Multi-tenant:** every call carries its own QuickBooks company and credentials, so one app can safely serve many companies at once.
+- **Fully customizable:** hide, rename or rewrite any tool, change what it accepts, or add your own, without forking the catalog.
+- **Middleware:** add access checks, logging, context or post-write sync in one place, in a familiar run-in-order style like Express or Hono.
+- **Your own app context:** your users, organizations and clients flow through every tool call, so tools can act on behalf of the right person.
+- **Consistent errors:** every failure comes back in one predictable shape that you control.
+- **Lightweight, customizable transport:** a small, dependency-light HTTP client you can swap or extend, with optional safe retries and duplicate-write protection.
+- **Multicurrency:** create and update transactions in foreign currencies with their exchange rates (invoices, payments, receipts, credit memos, purchase orders, vendor credits, deposits and transfers), and set the currency on vendors and accounts.
+- **Improvements on the stock QuickBooks MCP server:** bug fixes and refinements on top of the official server, with upstream changes reviewed and pulled in regularly.
+- **Works anywhere:** plug into an MCP server, an AI SDK, a background job or a plain script.
+- **Well tested:** hundreds of tests covering the tools, customization and transport.
+
+## QuickBooks Online tools as a library
 
 Import the embed entry. It does not load the OAuth client, `dotenv`, or `open`.
 
