@@ -59,20 +59,124 @@ export function isToolDisabled(toolName: string): boolean {
   return process.env[DISABLE_ENV[category]] === "true";
 }
 
-/** 
- * Registers a tool with the MCP server if it is not disabled.
- * Tools are categorized by their name prefix (e.g. create_, update_, delete_).
- * The corresponding environment variable (e.g. QUICKBOOKS_DISABLE_WRITE) determines if the tool is registered.
+/**
+ * Unsupported-parameter reporting (upstream #135), adapted for this fork.
+ *
+ * Plain `z.object()` schemas strip keys they do not declare. The call succeeds,
+ * the value never reaches QuickBooks, and the caller is not told. Upstream
+ * reports those keys instead of hard-failing: a stray parameter must not turn
+ * a transaction into an error, and several search tools spread leftover params
+ * into query criteria, so an unknown key has to be removed before the handler
+ * runs or it becomes a real SQL filter.
+ *
+ * This fork also uses `z.strictObject()` on write tools Entries Core calls
+ * (create_invoice, create-vendor, and the other strict schemas). Those already
+ * reject unknown keys and advertise additionalProperties:false. Loosening them
+ * here would change that contract, so strict schemas are registered unchanged.
+ * Nested passthrough / z.any() values live under declared keys and are kept.
  */
+
+/** Top-level keys a tool's params schema declares, or null if not an object schema. */
+export function knownParamKeys(schema: unknown): Set<string> | null {
+  const shape = (schema as any)?._def?.shape;
+  if (!shape) return null;
+  try {
+    return new Set(Object.keys(typeof shape === "function" ? shape() : shape));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * z.strictObject sets catchall to ZodNever. Plain z.object() has no catchall
+ * (strip). z.looseObject / .passthrough() set catchall to ZodUnknown.
+ */
+function catchallType(schema: unknown): string | undefined {
+  const anySchema = schema as any;
+  const catchall = anySchema?._zod?.def?.catchall ?? anySchema?._def?.catchall;
+  if (!catchall) return undefined;
+  return catchall?._zod?.def?.type ?? catchall?.type ?? catchall?._def?.type;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+/** Keep unknown keys through validation so they can be reported rather than vanish. */
+export function permissiveParamsSchema<T>(schema: T): T {
+  if (catchallType(schema) === "never") return schema;
+  const anySchema = schema as any;
+  return typeof anySchema?.passthrough === "function" ? anySchema.passthrough() : schema;
+}
+
+/** Human-readable notice naming parameters the tool does not support. */
+export function unsupportedParamsWarning(
+  toolName: string,
+  known: Set<string> | null,
+  params: unknown
+): string | null {
+  if (!known || !isPlainRecord(params)) return null;
+  const extras = Object.keys(params).filter((k) => !known.has(k));
+  if (extras.length === 0) return null;
+  return (
+    `WARNING: ${toolName} does not support ${extras.length === 1 ? "this parameter" : "these parameters"}: ` +
+    `${extras.join(", ")}. ${extras.length === 1 ? "It was" : "They were"} IGNORED - the value did not reach ` +
+    `QuickBooks. Supported parameters: ${[...known].sort().join(", ")}.`
+  );
+}
+
 export function RegisterTool<T extends z.ZodType>(
   server: McpServer,
   toolDefinition: ToolDefinition<T>
 ) {
   if (isToolDisabled(toolDefinition.name)) return;
-  server.tool(
-    toolDefinition.name,
-    toolDefinition.description,
-    { params: toolDefinition.schema },
-    toolDefinition.handler
-  );
+
+  const known = knownParamKeys(toolDefinition.schema);
+  const paramsSchema = permissiveParamsSchema(toolDefinition.schema);
+  const baseHandler = toolDefinition.handler as unknown as (...a: any[]) => Promise<any>;
+
+  const handler = (async (...a: any[]) => {
+    let callArgs = a;
+    let warning: string | null = null;
+    try {
+      const params = (a[0] as any)?.params;
+      if (known && isPlainRecord(params)) {
+        warning = unsupportedParamsWarning(toolDefinition.name, known, params);
+        if (warning) {
+          // Strip unknown keys before the handler runs. The permissive schema
+          // exists only so they can be SEEN; it must not change what reaches
+          // QuickBooks. Several search tools destructure their params with a rest
+          // element and pass the rest on as query criteria (search-bills,
+          // search-customers, search-estimates, search-vendors), so an unknown key
+          // left in place would become a real SQL filter - quietly changing which
+          // records the search returns while this warning claimed it was ignored.
+          const cleaned: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(params)) {
+            if (known.has(k)) cleaned[k] = v;
+          }
+          callArgs = [{ ...(a[0] as any), params: cleaned }, ...a.slice(1)];
+        }
+      }
+    } catch {
+      /* diagnostics must never break a working call */
+    }
+
+    const result = await baseHandler(...callArgs);
+
+    try {
+      if (warning && result && Array.isArray(result.content)) {
+        // Appended, not prepended. Entries Core parses write-tool text for
+        // { name, id, operation }, and several tools put that JSON in
+        // content[0] (create-bill, create-vendor). A leading warning would
+        // move the payload. The original blocks stay in order; the notice
+        // follows them, including on error responses.
+        result.content.push({ type: "text" as const, text: warning });
+      }
+    } catch {
+      /* diagnostics must never break a working call */
+    }
+    return result;
+  }) as typeof toolDefinition.handler;
+
+  server.tool(toolDefinition.name, toolDefinition.description, { params: paramsSchema }, handler);
 }

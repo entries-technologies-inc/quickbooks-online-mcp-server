@@ -2,7 +2,10 @@ import { describe, it, expect, afterEach, jest } from "@jest/globals";
 import {
   getCrudCategory,
   isToolDisabled,
+  knownParamKeys,
+  permissiveParamsSchema,
   RegisterTool,
+  unsupportedParamsWarning,
 } from "../../../src/helpers/register-tool";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -95,7 +98,14 @@ describe("RegisterTool", () => {
     const d = def("get_invoice");
     RegisterTool(server, d);
     expect(server.tool).toHaveBeenCalledTimes(1);
-    expect(server.tool).toHaveBeenCalledWith(d.name, d.description, { params: d.schema }, d.handler);
+    const [name, description, shape, handler] = (server.tool as jest.Mock).mock.calls[0] as any[];
+    expect(name).toBe(d.name);
+    expect(description).toBe(d.description);
+    expect(typeof handler).toBe("function");
+    // The registered schema is the definition's schema made permissive, so an
+    // unsupported parameter survives validation and can be reported instead of
+    // silently vanishing. It is therefore not the same object identity.
+    expect((shape.params as any).parse({ id: "1", unexpected_key: 1 }).unexpected_key).toBe(1);
   });
 
   // One test per mutable category to confirm the early-return path is reached.
@@ -136,5 +146,243 @@ describe("RegisterTool", () => {
     const server = { tool: jest.fn() } as unknown as McpServer;
     RegisterTool(server, def("create-bill"));
     expect(server.tool).not.toHaveBeenCalled();
+  });
+});
+
+
+// ── unsupported parameters ───────────────────────────────────────────────────
+// A tool schema is a strict zod object, so an undeclared parameter is dropped
+// during validation and the caller is never told. These cover both halves of
+// the fix: naming the parameter, and still not forwarding it to QuickBooks.
+describe("unsupported parameter reporting", () => {
+  const runRegistered = async (toolName: string, schema: any, params: any) => {
+    const seen: any[] = [];
+    const handler = jest.fn(async (args: any) => {
+      seen.push(args);
+      return { content: [{ type: "text", text: "ok" }] };
+    });
+    const server = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(server, { name: toolName, description: "d", schema, handler } as any);
+    const registered = (server.tool as jest.Mock).mock.calls[0][3] as any;
+    const result = await registered({ params });
+    return { result, seenByHandler: seen[0]?.params };
+  };
+
+  it("names an unsupported parameter in the response", async () => {
+    const { result } = await runRegistered(
+      "create_invoice",
+      z.object({ customer_ref: z.string() }),
+      { customer_ref: "1", ship_date: "2026-09-01" }
+    );
+    // Original payload stays first. Entries Core reads content[0] for
+    // { name, id, operation }; the warning is appended after it.
+    expect(result.content[0].text).toBe("ok");
+    expect(result.content[1].text).toContain("create_invoice does not support");
+    expect(result.content[1].text).toContain("ship_date");
+    expect(result.content[1].text).toContain("customer_ref"); // lists what IS supported
+  });
+
+  it("appends the warning on error responses without moving the error text", async () => {
+    const handler = jest.fn(async () => ({ content: [{ type: "text", text: "Error creating bill: no" }] }));
+    const server = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(server, {
+      name: "create-bill",
+      description: "d",
+      schema: z.object({ bill: z.any() }),
+      handler,
+    } as any);
+    const registered = (server.tool as jest.Mock).mock.calls[0][3] as any;
+    const result = await registered({ params: { bill: { VendorRef: { value: "1" } }, extra: true } });
+    expect(result.content[0].text).toBe("Error creating bill: no");
+    expect(result.content[1].text).toContain("extra");
+  });
+
+  it("strips unknown keys so they cannot reach QuickBooks", async () => {
+    // search-bills/customers/estimates/vendors spread leftover params into query
+    // criteria; a key left in place would become a real SQL filter.
+    const { seenByHandler } = await runRegistered(
+      "search_bills",
+      z.object({ criteria: z.any().optional() }),
+      { criteria: [], DocNumber: "1042" }
+    );
+    expect(seenByHandler).toEqual({ criteria: [] });
+    expect(seenByHandler).not.toHaveProperty("DocNumber");
+  });
+
+  it("leaves a fully supported call untouched", async () => {
+    const { result, seenByHandler } = await runRegistered(
+      "read_invoice",
+      z.object({ invoice_id: z.string() }),
+      { invoice_id: "42" }
+    );
+    expect(seenByHandler).toEqual({ invoice_id: "42" });
+    expect(result.content[0].text).toBe("ok");
+  });
+
+  it("pluralises, and stays silent on input it cannot analyse", () => {
+    const known = knownParamKeys(z.object({ a: z.string() }));
+    expect(unsupportedParamsWarning("t", known, { b: 1, c: 2 })).toContain("these parameters");
+    expect(unsupportedParamsWarning("t", known, { a: "x" })).toBeNull();
+    expect(unsupportedParamsWarning("t", known, undefined)).toBeNull();
+    expect(unsupportedParamsWarning("t", null, { b: 1 })).toBeNull();
+  });
+
+  it("knownParamKeys returns null for schemas without an object shape", () => {
+    expect(knownParamKeys(z.string())).toBeNull();
+    expect(knownParamKeys(undefined)).toBeNull();
+  });
+
+  it("knownParamKeys reads shape provided as a plain object (zod v4 style)", () => {
+    const objectShapeSchema = { _def: { shape: { a: true, b: true } } };
+    expect(knownParamKeys(objectShapeSchema)).toEqual(new Set(["a", "b"]));
+  });
+
+  it("knownParamKeys returns null when reading the shape throws", () => {
+    const throwingSchema = {
+      _def: {
+        shape: () => {
+          throw new Error("broken shape");
+        },
+      },
+    };
+    expect(knownParamKeys(throwingSchema)).toBeNull();
+  });
+
+  it("permissiveParamsSchema keeps unknown keys and passes non-object schemas through", () => {
+    const permissive: any = permissiveParamsSchema(z.object({ a: z.string() }));
+    expect(permissive.parse({ a: "x", extra: 1 }).extra).toBe(1);
+    const plain = z.string();
+    expect(permissiveParamsSchema(plain)).toBe(plain);
+  });
+
+  it("does not loosen z.strictObject schemas", () => {
+    const schema = z.strictObject({ customer_ref: z.string() });
+    const registered = permissiveParamsSchema(schema);
+    expect(registered).toBe(schema);
+    expect(registered.safeParse({ customer_ref: "1", ship_date: "2026-09-01" }).success).toBe(false);
+    expect(registered.safeParse({ customer_ref: "1" }).success).toBe(true);
+
+    const server = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(server, {
+      name: "create_invoice",
+      description: "d",
+      schema,
+      handler: jest.fn(),
+    } as any);
+    const paramsSchema = ((server.tool as jest.Mock).mock.calls[0] as any[])[2].params;
+    expect(paramsSchema).toBe(schema);
+  });
+
+  it("still loosens an already-passthrough object", () => {
+    const permissive: any = permissiveParamsSchema(z.object({ a: z.string() }).passthrough());
+    expect(permissive.parse({ a: "x", extra: 1 }).extra).toBe(1);
+  });
+
+  it("treats never-catchall schemas as strict across zod def shapes", () => {
+    const mustNotLoosen = () => {
+      throw new Error("must not loosen");
+    };
+    const viaType = { _def: { catchall: { type: "never" } }, passthrough: mustNotLoosen };
+    const viaNestedDef = { _def: { catchall: { _def: { type: "never" } } }, passthrough: mustNotLoosen };
+    const viaZod = {
+      _zod: { def: { catchall: { _zod: { def: { type: "never" } } } } },
+      passthrough: mustNotLoosen,
+    };
+    expect(permissiveParamsSchema(viaType)).toBe(viaType);
+    expect(permissiveParamsSchema(viaNestedDef)).toBe(viaNestedDef);
+    expect(permissiveParamsSchema(viaZod)).toBe(viaZod);
+
+    const loose = {
+      _zod: { def: { catchall: { type: "unknown" } } },
+      passthrough: () => ({ loosened: true }),
+    };
+    expect(permissiveParamsSchema(loose)).toEqual({ loosened: true });
+  });
+
+  it("ignores non-record params and survives diagnostic failures", async () => {
+    const { result, seenByHandler } = await runRegistered(
+      "search_customers",
+      z.object({ criteria: z.any().optional() }),
+      ["not", "a", "record"]
+    );
+    expect(seenByHandler).toEqual(["not", "a", "record"]);
+    expect(result.content).toEqual([{ type: "text", text: "ok" }]);
+
+    expect(unsupportedParamsWarning("t", knownParamKeys(z.object({ a: z.string() })), "ship_date")).toBeNull();
+
+    const throwing = new Proxy({ customer_ref: "1" }, {
+      ownKeys() {
+        throw new Error("keys failed");
+      },
+    });
+    const seen: any[] = [];
+    const handler = jest.fn(async (args: any) => {
+      seen.push(args);
+      return { content: [{ type: "text", text: "ok" }] };
+    });
+    const server = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(server, {
+      name: "create_customer",
+      description: "d",
+      schema: z.object({ customer: z.any() }),
+      handler,
+    } as any);
+    const registered = (server.tool as jest.Mock).mock.calls[0][3] as any;
+    const survived = await registered({ params: throwing });
+    expect(survived.content[0].text).toBe("ok");
+    expect(seen[0].params).toBe(throwing);
+
+    const content: any[] = [];
+    Object.defineProperty(content, "push", {
+      value() {
+        throw new Error("push failed");
+      },
+    });
+    const pushHandler = jest.fn(async () => ({ content }));
+    const pushServer = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(pushServer, {
+      name: "create-bill",
+      description: "d",
+      schema: z.object({ bill: z.any() }),
+      handler: pushHandler,
+    } as any);
+    const pushRegistered = (pushServer.tool as jest.Mock).mock.calls[0][3] as any;
+    const pushed = await pushRegistered({ params: { bill: {}, stray: 1 } });
+    expect(pushed.content).toBe(content);
+
+    const noResult = jest.fn(async () => undefined);
+    const noResultServer = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(noResultServer, {
+      name: "create-bill",
+      description: "d",
+      schema: z.object({ bill: z.any() }),
+      handler: noResult,
+    } as any);
+    const noResultRegistered = (noResultServer.tool as jest.Mock).mock.calls[0][3] as any;
+    await expect(noResultRegistered({ params: { bill: {}, stray: 1 } })).resolves.toBeUndefined();
+
+    const noContent = jest.fn(async () => ({ content: "not-an-array" }));
+    const noContentServer = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(noContentServer, {
+      name: "create-bill",
+      description: "d",
+      schema: z.object({ bill: z.any() }),
+      handler: noContent,
+    } as any);
+    const noContentRegistered = (noContentServer.tool as jest.Mock).mock.calls[0][3] as any;
+    await expect(noContentRegistered({ params: { bill: {}, stray: 1 } })).resolves.toEqual({
+      content: "not-an-array",
+    });
+
+    const stringSchemaServer = { tool: jest.fn() } as unknown as McpServer;
+    RegisterTool(stringSchemaServer, {
+      name: "get_company_info",
+      description: "d",
+      schema: z.string(),
+      handler: jest.fn(async (args: any) => ({ content: [{ type: "text", text: JSON.stringify(args ?? null) }] })),
+    } as any);
+    const stringRegistered = (stringSchemaServer.tool as jest.Mock).mock.calls[0][3] as any;
+    const stringResult = await stringRegistered();
+    expect(stringResult.content).toHaveLength(1);
   });
 });
