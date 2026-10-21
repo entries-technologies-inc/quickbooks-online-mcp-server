@@ -5,8 +5,9 @@ import type { QboToolMeta } from "./tools/meta.js";
 export type QboTool = ToolDefinition<ZodType> & {
   meta: QboToolMeta;
   /**
-   * `wrapRun` layers, outermost last. An own enumerable field so `{ ...tool }`
-   * keeps them. The builder composes them when the tool runs; `override`
+   * `wrapRun` layers in the order they were added. The first entry is
+   * outermost. An own enumerable field so `{ ...tool }` keeps them. The
+   * builder composes this list in reverse when the tool runs; `override`
    * replaces `handler` and leaves this list in place.
    */
   runLayers?: readonly QboRunLayer[];

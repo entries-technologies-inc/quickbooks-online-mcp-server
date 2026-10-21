@@ -4,6 +4,7 @@ import {
   describe as describeTool,
   isRead,
   isWrite,
+  name,
   pipe,
   when,
   withRequestId,
@@ -166,38 +167,81 @@ describe("per-call app context", () => {
     expect(called).toBe(0);
   });
 
-  it("runs the last wrapRun outside the earlier ones", async () => {
+  it("runs stacked wrapRun middleware in registration order", async () => {
     const order: string[] = [];
     const tools = createQboTools({
       transport: async () => ({ status: 200, body: billBody }),
     })
       .use(
         wrapRun((next) => async (args, ctx) => {
-          order.push("first-before");
+          order.push("A-before");
           const result = await next(args, ctx);
-          order.push("first-after");
+          order.push("A-after");
 
           return result;
         }),
       )
       .use(
         wrapRun((next) => async (args, ctx) => {
-          order.push("second-before");
+          order.push("B-before");
           const result = await next(args, ctx);
-          order.push("second-after");
+          order.push("B-after");
 
           return result;
         }),
       );
     const bill = tools.list().find((tool) => tool.name === "get-bill");
 
-    await bill?.run({ params: { id: "1" } }, { qbo: credentials, app: undefined });
+    await bill?.run(
+      { params: { id: "1" } },
+      { qbo: credentials, app: undefined },
+    );
 
+    expect(order).toEqual(["A-before", "B-before", "B-after", "A-after"]);
+  });
+
+  it("keeps registration order across when and rename", async () => {
+    const order: string[] = [];
+    const layer = (label: string) =>
+      wrapRun((next) => async (args, ctx) => {
+        order.push(`${label}-before`);
+        const result = await next(args, ctx);
+        order.push(`${label}-after`);
+
+        return result;
+      });
+    const tools = createQboTools({
+      transport: async () => ({ status: 200, body: billBody }),
+    })
+      .use(layer("A"))
+      .rename("get-bill", "read_bill")
+      .use(when(name("read_bill"), layer("B")))
+      .use(
+        when(
+          name("get-vendor"),
+          wrapRun(() => async () => {
+            order.push("skipped");
+
+            return { content: [] };
+          }),
+        ),
+      )
+      .use(layer("C"));
+    const bill = tools.list().find((tool) => tool.name === "read_bill");
+
+    await bill?.run(
+      { params: { id: "1" } },
+      { qbo: credentials, app: undefined },
+    );
+
+    expect(tools.list().some((tool) => tool.name === "get-bill")).toBe(false);
     expect(order).toEqual([
-      "second-before",
-      "first-before",
-      "first-after",
-      "second-after",
+      "A-before",
+      "B-before",
+      "C-before",
+      "C-after",
+      "B-after",
+      "A-after",
     ]);
   });
 

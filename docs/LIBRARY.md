@@ -192,7 +192,7 @@ const audited = withAuth.use(
 );
 ```
 
-`.use()` applies each middleware outside the ones already applied. The last `wrapRun` runs first.
+Middleware runs in the order added (first added is outermost). Code after `next` runs on the way back, so a later middleware finishes before an earlier one.
 
 `ToolMiddleware<TApp>` is `(tool) => tool`. Changing a description per tool is that function. `describe` stays a string.
 

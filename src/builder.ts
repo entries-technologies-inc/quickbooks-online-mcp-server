@@ -200,7 +200,10 @@ export class QboTools<TApp = unknown> {
 
     const layers = (tool.runLayers ?? []) as readonly QboRunLayer[];
 
-    return layers.reduce<ToolRun<TApp>>(
+    // Layers are stored in registration order. Compose from the end so the
+    // first `.use()` stays outermost: A -> B -> handler, then B's post-next
+    // code, then A's.
+    return layers.reduceRight<ToolRun<TApp>>(
       (next, layer) => layer(next, tool) as ToolRun<TApp>,
       terminal,
     );

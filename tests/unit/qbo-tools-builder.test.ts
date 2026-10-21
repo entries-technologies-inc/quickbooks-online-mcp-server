@@ -501,8 +501,11 @@ describe("embed import graph", () => {
       isError: true,
       content: [{ type: "text", text: "Error: wrapped" }],
     });
-    await bill?.run({ params: { id: "1" } }, withQbo({ realmId: "realm-a" }));
+    // The first wrapRun is outermost, so it runs before the throwing one.
     expect(wrapped).toBe(3);
+    expect(seen).toHaveLength(2);
+    await bill?.run({ params: { id: "1" } }, withQbo({ realmId: "realm-a" }));
+    expect(wrapped).toBe(4);
     expect(seen).toHaveLength(3);
   });
 
