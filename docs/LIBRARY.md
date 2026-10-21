@@ -10,6 +10,8 @@ Package: `@qboapi/qbo-mcp-server`. `zod` is a peer dependency. `npm run build` e
 
 Build one catalog and call it with a fresh context. Do not rebuild the 142 tools when a token changes.
 
+Catalog tool names are snake_case (`get_bill`, `create_vendor`). Upstream still registers eight bill and vendor tools with hyphens (`create-bill`, `update-bill`, `delete-bill`, `get-bill`, `create-vendor`, `update-vendor`, `delete-vendor`, `get-vendor`). Syncs from upstream must keep those names snake_case. `rename(from, to)` and `rename(fn)` stay available when a caller wants a different name.
+
 ## Quick start
 
 ```ts
@@ -17,7 +19,7 @@ import { createQboTools, isWrite } from "@qboapi/qbo-mcp-server/embed";
 
 const tools = createQboTools<App>({ transport }).exclude(isWrite());
 
-const bill = tools.list().find((tool) => tool.name === "get-bill");
+const bill = tools.list().find((tool) => tool.name === "get_bill");
 await bill?.run(
   { id: "1" },
   {
@@ -27,7 +29,7 @@ await bill?.run(
 );
 ```
 
-`run(params, ctx)` takes the tool's params directly (`{ id: "1" }` for get-bill). `wrapRun` receives that same object as `args`. A thrown handler comes back as `{ isError: true, content: [{ type: "text", text }] }` unless you pass `formatError`.
+`run(params, ctx)` takes the tool's params directly (`{ id: "1" }` for get_bill). `wrapRun` receives that same object as `args`. A thrown handler comes back as `{ isError: true, content: [{ type: "text", text }] }` unless you pass `formatError`.
 
 ## Transport
 
@@ -216,7 +218,7 @@ Copy the tool when you change it (`{ ...tool }`). That keeps `wrapRun` layers. R
 | `isWrite()` | `create`, `update`, `delete`, `void` |
 | `op(kind)` | that `meta.op.kind` |
 | `entity("Bill")` | that Intuit entity. Reports do not match. |
-| `name("get-bill")` | that tool name |
+| `name("get_bill")` | that tool name |
 | `pred((tool) => ...)` | your test |
 
 `and`, `or`, and `not` combine predicates. `when(predicate, middleware)` runs the middleware only when the predicate matches.
@@ -239,14 +241,14 @@ const narrowed = oneDescription
   .exclude(pred((tool) => tool.meta.op.kind === "report"));
 ```
 
-`isRead().not()` matches every write, including void. `name("get-bill").or(entity("Invoice"))` matches either side. `exclude(isWrite())` drops every write (`delete_invoice` is a void).
+`isRead().not()` matches every write, including void. `name("get_bill").or(entity("Invoice"))` matches either side. `exclude(isWrite())` drops every write (`delete_invoice` is a void).
 
 ## Builder
 
 `exclude`, `use`, `rename`, `override`, and `add` return a new `QboTools` and do not change the receiver. One catalog can be branched per caller.
 
 ```ts
-const aliases = new Map([["get-bill", "read_bill"]]);
+const aliases = new Map([["get_bill", "read_bill"]]);
 const base = createQboTools<App>({ transport }).use(injectQbo);
 const readOnly = base.exclude(isWrite());
 const aliased = base.rename((toolName) => aliases.get(toolName) ?? toolName);
@@ -254,7 +256,7 @@ const aliased = base.rename((toolName) => aliases.get(toolName) ?? toolName);
 
 `base` still has writes and the original names.
 
-`rename` also takes a pair: `.rename("create-bill", "create_bill")`. `override(name, handler)` replaces the MCP handler and leaves `wrapRun` layers in place. `add(tool)` appends a tool. The tool needs `name`, `description`, `schema`, `handler`, and `meta`.
+`rename` also takes a pair: `.rename("create_bill", "make_bill")`. `override(name, handler)` replaces the MCP handler and leaves `wrapRun` layers in place. `add(tool)` appends a tool. The tool needs `name`, `description`, `schema`, `handler`, and `meta`.
 
 `register` and `handlers` do not copy the catalog. They close over the tools on that builder.
 
@@ -264,7 +266,7 @@ Listed tools:
 
 ```ts
 const listed = tools.list();
-await listed.find((tool) => tool.name === "get-bill")?.run(
+await listed.find((tool) => tool.name === "get_bill")?.run(
   { id: "1" },
   { qbo, app },
 );
@@ -284,7 +286,7 @@ Handlers are the MCP functions, keyed by tool name. The MCP handler is still `(a
 
 ```ts
 const handlers = tools.handlers({ context: { qbo, app } });
-await handlers["get-bill"]?.({ params: { id: "1" } }, extra);
+await handlers["get_bill"]?.({ params: { id: "1" } }, extra);
 ```
 
 ## Another framework

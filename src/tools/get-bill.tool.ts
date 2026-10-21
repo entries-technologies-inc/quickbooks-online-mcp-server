@@ -2,7 +2,7 @@ import { getQuickbooksBill } from "../handlers/get-quickbooks-bill.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
-const toolName = "get-bill";
+const toolName = "get_bill";
 const toolDescription = "Get a bill by ID from QuickBooks Online.";
 const toolSchema = z.object({
   id: z.string(),

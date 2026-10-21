@@ -144,6 +144,10 @@ import { GetAgedPayablesTool } from "./get-aged-payables.tool.js";
 import { GetVendorExpensesTool } from "./get-vendor-expenses.tool.js";
 import { GetVendorBalanceTool } from "./get-vendor-balance.tool.js";
 
+// Registered names are snake_case. Upstream still ships hyphenated names for
+// create-bill, update-bill, delete-bill, get-bill, create-vendor,
+// update-vendor, delete-vendor, and get-vendor. Syncs must keep those eight
+// tools snake_case (create_bill, and so on). File names stay hyphenated.
 export const qboTools: ToolDefinition<ZodType>[] = [
   CreateCustomerTool,
   GetCustomerTool,

@@ -451,7 +451,7 @@ import {
 
 const tools = createQboTools({ transport }).exclude(isWrite());
 
-const bill = tools.list().find((tool) => tool.name === "get-bill");
+const bill = tools.list().find((tool) => tool.name === "get_bill");
 await bill?.run({ params: { id: "1" } }, {
   accessToken,
   realmId,

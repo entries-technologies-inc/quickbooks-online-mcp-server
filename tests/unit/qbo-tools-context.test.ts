@@ -82,7 +82,7 @@ describe("per-call app context", () => {
         ),
       ),
     );
-    const bill = tools.list().find((tool) => tool.name === "get-bill");
+    const bill = tools.list().find((tool) => tool.name === "get_bill");
 
     await bill?.run(
       { id: "1" },
@@ -92,7 +92,7 @@ describe("per-call app context", () => {
       },
     );
 
-    expect(middlewareApp).toBe("user-1:get-bill:get");
+    expect(middlewareApp).toBe("user-1:get_bill:get");
     expect(seen).toEqual(["user-1:123"]);
   });
 
@@ -116,7 +116,7 @@ describe("per-call app context", () => {
         }),
       ),
     );
-    const bill = tools.list().find((tool) => tool.name === "get-bill");
+    const bill = tools.list().find((tool) => tool.name === "get_bill");
 
     await bill?.run(
       { id: "1" },
@@ -146,7 +146,7 @@ describe("per-call app context", () => {
         next(args, { ...ctx, qbo: undefined }),
       ),
     );
-    const stripped = stripping.list().find((tool) => tool.name === "get-bill");
+    const stripped = stripping.list().find((tool) => tool.name === "get_bill");
 
     await expect(
       stripped?.run(
@@ -162,7 +162,7 @@ describe("per-call app context", () => {
         return { status: 200, body: billBody };
       },
     });
-    const bill = bare.list().find((tool) => tool.name === "get-bill");
+    const bill = bare.list().find((tool) => tool.name === "get_bill");
 
     await expect(
       bill?.run({ id: "1" }, { app: undefined }),
@@ -193,7 +193,7 @@ describe("per-call app context", () => {
           return result;
         }),
       );
-    const bill = tools.list().find((tool) => tool.name === "get-bill");
+    const bill = tools.list().find((tool) => tool.name === "get_bill");
 
     await bill?.run(
       { id: "1" },
@@ -217,11 +217,11 @@ describe("per-call app context", () => {
       transport: async () => ({ status: 200, body: billBody }),
     })
       .use(layer("A"))
-      .rename("get-bill", "read_bill")
+      .rename("get_bill", "read_bill")
       .use(when(name("read_bill"), layer("B")))
       .use(
         when(
-          name("get-vendor"),
+          name("get_vendor"),
           wrapRun(() => async () => {
             order.push("skipped");
 
@@ -237,7 +237,7 @@ describe("per-call app context", () => {
       { qbo: credentials, app: undefined },
     );
 
-    expect(tools.list().some((tool) => tool.name === "get-bill")).toBe(false);
+    expect(tools.list().some((tool) => tool.name === "get_bill")).toBe(false);
     expect(order).toEqual([
       "A-before",
       "B-before",
@@ -279,7 +279,7 @@ describe("per-call app context", () => {
         extra,
       }),
     });
-    const registered = registrations.find((tool) => tool.name === "get-bill");
+    const registered = registrations.find((tool) => tool.name === "get_bill");
     await (
       registered?.handler as (
         args: unknown,
@@ -297,7 +297,7 @@ describe("per-call app context", () => {
         };
       },
     });
-    const readBill = handlers["get-bill"] as (
+    const readBill = handlers["get_bill"] as (
       args: unknown,
       extra?: unknown,
     ) => Promise<unknown>;
@@ -324,7 +324,7 @@ describe("library call shape", () => {
         return next(args, ctx);
       }),
     );
-    await tools.list().find((tool) => tool.name === "get-bill")?.run(
+    await tools.list().find((tool) => tool.name === "get_bill")?.run(
       { id: "1" },
       { qbo: credentials, app: undefined },
     );
@@ -333,7 +333,7 @@ describe("library call shape", () => {
     tools.register(server, {
       context: { qbo: credentials, app: undefined },
     });
-    const registered = registrations.find((tool) => tool.name === "get-bill");
+    const registered = registrations.find((tool) => tool.name === "get_bill");
     await registered?.handler({ params: { id: "7" } });
 
     expect(seen).toEqual([{ id: "1" }, { id: "7" }]);
@@ -348,13 +348,13 @@ describe("library call shape", () => {
         message: error instanceof Error ? error.message : String(error),
       }),
     });
-    const bill = base.list().find((tool) => tool.name === "get-bill");
+    const bill = base.list().find((tool) => tool.name === "get_bill");
 
     await expect(
       bill?.run({ id: "1" }, { app: undefined }),
     ).resolves.toEqual({
       custom: true,
-      tool: "get-bill",
+      tool: "get_bill",
       message:
         "QuickBooks context missing: pass ctx.qbo or set it in middleware",
     });
@@ -365,37 +365,37 @@ describe("library call shape", () => {
       }),
     );
     await expect(
-      throwing.list().find((tool) => tool.name === "get-bill")?.run(
+      throwing.list().find((tool) => tool.name === "get_bill")?.run(
         { id: "1" },
         { qbo: credentials, app: undefined },
       ),
     ).resolves.toEqual({
       custom: true,
-      tool: "get-bill",
+      tool: "get_bill",
       message: "from middleware",
     });
 
-    const overridden = base.override("get-bill", async () => {
+    const overridden = base.override("get_bill", async () => {
       throw new Error("from handler");
     });
     const failed = await (
       overridden.handlers({
         context: { qbo: credentials, app: undefined },
-      })["get-bill"] as (args: unknown, extra?: unknown) => Promise<unknown>
+      })["get_bill"] as (args: unknown, extra?: unknown) => Promise<unknown>
     )({ params: { id: "1" } });
     expect(failed).toEqual({
       custom: true,
-      tool: "get-bill",
+      tool: "get_bill",
       message: "from handler",
     });
 
-    const branched = base.exclude("create-bill");
+    const branched = base.exclude("create_bill");
     await expect(
-      branched.list().find((tool) => tool.name === "get-vendor")?.run(
+      branched.list().find((tool) => tool.name === "get_vendor")?.run(
         { id: "1" },
         { app: undefined },
       ),
-    ).resolves.toMatchObject({ custom: true, tool: "get-vendor" });
+    ).resolves.toMatchObject({ custom: true, tool: "get_vendor" });
   });
 
   it("types a catalog and calls a transport without a transport field", async () => {
@@ -439,7 +439,7 @@ describe("library call shape", () => {
       }),
     );
     const listed: QboListedTool<{ userId: string }>[] = catalog.list();
-    const bill = listed.find((tool) => tool.name === "get-bill");
+    const bill = listed.find((tool) => tool.name === "get_bill");
 
     await bill?.run(
       { id: "1" },
@@ -455,7 +455,7 @@ describe("library call shape", () => {
     );
 
     expect(seenArgs).toEqual({ id: "1" });
-    expect(catalog.list().some((tool) => tool.name === "create-bill")).toBe(
+    expect(catalog.list().some((tool) => tool.name === "create_bill")).toBe(
       true,
     );
   });
@@ -468,49 +468,49 @@ describe("immutable catalog", () => {
     }).use(describeTool("shared"));
     const readOnly = base.exclude(isWrite());
     const renamed = base.rename((toolName) =>
-      toolName === "get-bill" ? "read_bill" : toolName,
+      toolName === "get_bill" ? "read_bill" : toolName,
     );
-    const bill = base.list().find((tool) => tool.name === "get-bill") as QboTool;
+    const bill = base.list().find((tool) => tool.name === "get_bill") as QboTool;
     const added = base.add({
       ...bill,
       name: "get_extra",
       description: "extra",
     });
-    const overridden = base.override("get-bill", async () => ({
+    const overridden = base.override("get_bill", async () => ({
       content: [{ type: "text" as const, text: "replaced" }],
     }));
 
     const baseNames = base.list().map((tool) => tool.name);
-    expect(baseNames).toContain("create-bill");
-    expect(baseNames).toContain("get-bill");
+    expect(baseNames).toContain("create_bill");
+    expect(baseNames).toContain("get_bill");
     expect(baseNames).not.toContain("read_bill");
     expect(baseNames).not.toContain("get_extra");
-    expect(base.list().find((tool) => tool.name === "get-bill")?.description).toBe(
+    expect(base.list().find((tool) => tool.name === "get_bill")?.description).toBe(
       "shared",
     );
 
     const readOnlyNames = readOnly.list().map((tool) => tool.name);
-    expect(readOnlyNames.some((toolName) => toolName === "create-bill")).toBe(
+    expect(readOnlyNames.some((toolName) => toolName === "create_bill")).toBe(
       false,
     );
     expect(readOnly.list().some((tool) => isWrite().test(tool))).toBe(false);
-    expect(readOnlyNames).toContain("get-bill");
+    expect(readOnlyNames).toContain("get_bill");
     expect(
-      readOnly.list().find((tool) => tool.name === "get-bill")?.description,
+      readOnly.list().find((tool) => tool.name === "get_bill")?.description,
     ).toBe("shared");
 
     const renamedNames = renamed.list().map((tool) => tool.name);
     expect(renamedNames).toContain("read_bill");
-    expect(renamedNames).not.toContain("get-bill");
-    expect(renamedNames).toContain("create-bill");
+    expect(renamedNames).not.toContain("get_bill");
+    expect(renamedNames).toContain("create_bill");
     expect(renamed.list().find((tool) => tool.name === "read_bill")?.description).toBe(
       "shared",
     );
 
     expect(added.list().map((tool) => tool.name)).toContain("get_extra");
     expect(
-      overridden.list().find((tool) => tool.name === "get-bill")?.handler,
-    ).not.toBe(base.list().find((tool) => tool.name === "get-bill")?.handler);
+      overridden.list().find((tool) => tool.name === "get_bill")?.handler,
+    ).not.toBe(base.list().find((tool) => tool.name === "get_bill")?.handler);
     expect(base.list().map((tool) => tool.name)).toEqual(baseNames);
   });
 
@@ -519,18 +519,18 @@ describe("immutable catalog", () => {
       transport: async () => ({ status: 200, body: {} }),
     });
     const aliases = new Map([
-      ["get-bill", "read_bill"],
-      ["create-bill", "write_bill"],
+      ["get_bill", "read_bill"],
+      ["create_bill", "write_bill"],
     ]);
     const renamed = base.rename((toolName) => aliases.get(toolName) ?? toolName);
     const paired = renamed.rename("read_bill", "fetch_bill");
 
-    expect(base.list().map((tool) => tool.name)).toContain("get-bill");
-    expect(base.list().map((tool) => tool.name)).toContain("create-bill");
+    expect(base.list().map((tool) => tool.name)).toContain("get_bill");
+    expect(base.list().map((tool) => tool.name)).toContain("create_bill");
     expect(renamed.list().map((tool) => tool.name)).toContain("read_bill");
     expect(renamed.list().map((tool) => tool.name)).toContain("write_bill");
-    expect(renamed.list().map((tool) => tool.name)).not.toContain("get-bill");
-    expect(renamed.list().map((tool) => tool.name)).toContain("get-vendor");
+    expect(renamed.list().map((tool) => tool.name)).not.toContain("get_bill");
+    expect(renamed.list().map((tool) => tool.name)).toContain("get_vendor");
     expect(paired.list().map((tool) => tool.name)).toContain("fetch_bill");
     expect(paired.list().map((tool) => tool.name)).not.toContain("read_bill");
     expect(renamed.list().map((tool) => tool.name)).toContain("read_bill");

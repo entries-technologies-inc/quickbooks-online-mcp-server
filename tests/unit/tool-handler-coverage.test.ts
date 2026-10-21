@@ -289,7 +289,7 @@ describe("tool handler branches the loose proxy missed", () => {
   it("returns the created or updated entity when the transport succeeds", async () => {
     const calls: Array<[string, unknown]> = [
       [
-        "create-bill",
+        "create_bill",
         {
           bill: {
             VendorRef: { value: "1" },
@@ -319,7 +319,7 @@ describe("tool handler branches the loose proxy missed", () => {
         "create_vendor_credit",
         { vendor_ref: "1", line_items: [{ amount: 1, account_ref: "3" }] },
       ],
-      ["update-bill", { bill: { Id: "1", PrivateNote: "note" } }],
+      ["update_bill", { bill: { Id: "1", PrivateNote: "note" } }],
       ["update_vendor_credit", { id: "1", sync_token: "0" }],
     ];
 

@@ -103,7 +103,7 @@ export async function updateQuickbooksBill(bill: any): Promise<ToolResponse<any>
     const quickbooks = await QuickbooksClient.getInstance();
 
     if (!bill?.Id) {
-      return { result: null, isError: true, error: "update-bill requires bill.Id" };
+      return { result: null, isError: true, error: "update_bill requires bill.Id" };
     }
 
     const current = await new Promise<any>((resolve, reject) => {

@@ -84,12 +84,12 @@ describe("tool metadata", () => {
     expect(
       Object.values(TOOL_META).filter((meta) => meta.op.kind === "report"),
     ).toHaveLength(11);
-    expect(TOOL_META["get-bill"]?.op).toEqual({ kind: "get", entity: "Bill" });
+    expect(TOOL_META["get_bill"]?.op).toEqual({ kind: "get", entity: "Bill" });
     expect(TOOL_META["search_bills"]?.op).toEqual({
       kind: "query",
       entity: "Bill",
     });
-    expect(TOOL_META["create-bill"]?.op).toEqual({
+    expect(TOOL_META["create_bill"]?.op).toEqual({
       kind: "create",
       entity: "Bill",
     });
@@ -112,7 +112,7 @@ describe("createQboTools", () => {
       .exclude(["read_item", "search_bills"])
       .exclude((tool) => tool.name === "search_vendors")
       .exclude(name("search_customers"))
-      .rename("create-bill", "create_bill")
+      .rename("create_bill", "make_bill")
       .rename("missing-tool", "unused");
 
     const listed = tools.list();
@@ -123,12 +123,12 @@ describe("createQboTools", () => {
     expect(names).not.toContain("search_bills");
     expect(names).not.toContain("search_vendors");
     expect(names).not.toContain("search_customers");
-    expect(names).toContain("create_bill");
-    expect(names).not.toContain("create-bill");
+    expect(names).toContain("make_bill");
+    expect(names).not.toContain("create_bill");
     listed.pop();
     expect(tools.list()).toHaveLength(listed.length + 1);
 
-    const bill = tools.list().find((tool) => tool.name === "get-bill");
+    const bill = tools.list().find((tool) => tool.name === "get_bill");
     expect(bill).toBeDefined();
     const added = tools.add({
       ...(bill as QboTool),
@@ -161,19 +161,19 @@ describe("createQboTools", () => {
       transport: async () => ({ status: 200, body: {} }),
     }).use(
       pipe(
-        when(name("get-bill"), describeTool("bill by id")),
-        when(name("get-vendor"), describeTool("vendor by id")),
+        when(name("get_bill"), describeTool("bill by id")),
+        when(name("get_vendor"), describeTool("vendor by id")),
         wrapRun((next) => (args, ctx) => next(args, ctx)),
       ),
     );
 
-    const bill = tools.list().find((tool) => tool.name === "get-bill");
-    const vendor = tools.list().find((tool) => tool.name === "get-vendor");
+    const bill = tools.list().find((tool) => tool.name === "get_bill");
+    const vendor = tools.list().find((tool) => tool.name === "get_vendor");
 
     expect(bill?.description).toBe("bill by id");
     expect(vendor?.description).toBe("vendor by id");
     expect(pipe()(bill as QboTool)).toBe(bill);
-    expect(rename("other", "nope")(bill as QboTool).name).toBe("get-bill");
+    expect(rename("other", "nope")(bill as QboTool).name).toBe("get_bill");
   });
 
   it("matches reads, writes, entities, and operations", () => {
@@ -184,7 +184,7 @@ describe("createQboTools", () => {
       tools.list().map((tool) => [tool.name, tool]),
     );
 
-    const bill = toolByName["get-bill"] as QboTool;
+    const bill = toolByName["get_bill"] as QboTool;
     const invoiceDelete = toolByName["delete_invoice"] as QboTool;
     const profitAndLoss = toolByName["get_profit_and_loss"] as QboTool;
 
@@ -198,14 +198,14 @@ describe("createQboTools", () => {
     expect(entity("Bill").test(profitAndLoss)).toBe(false);
     expect(op("void").test(invoiceDelete)).toBe(true);
     expect(op("get").test(invoiceDelete)).toBe(false);
-    expect(name("get-bill").and(isRead()).test(bill)).toBe(true);
-    expect(name("get-bill").and(isWrite()).test(bill)).toBe(false);
+    expect(name("get_bill").and(isRead()).test(bill)).toBe(true);
+    expect(name("get_bill").and(isWrite()).test(bill)).toBe(false);
     expect(name("missing").and(isRead()).test(bill)).toBe(false);
-    expect(name("get-bill").or(isWrite()).test(bill)).toBe(true);
-    expect(name("missing").or(name("get-bill")).test(bill)).toBe(true);
+    expect(name("get_bill").or(isWrite()).test(bill)).toBe(true);
+    expect(name("missing").or(name("get_bill")).test(bill)).toBe(true);
     expect(name("missing").or(name("also-missing")).test(bill)).toBe(false);
-    expect(name("get-bill").not().test(bill)).toBe(false);
-    expect(name("get-bill").not().test(invoiceDelete)).toBe(true);
+    expect(name("get_bill").not().test(bill)).toBe(false);
+    expect(name("get_bill").not().test(invoiceDelete)).toBe(true);
     expect(isRead().and(entity("Bill")).test(profitAndLoss)).toBe(false);
   });
 
@@ -214,7 +214,7 @@ describe("createQboTools", () => {
     const tools = createQboTools({
       transport: recordedTransport(seen),
       queryDefaults: { minorversion: "73" },
-    }).rename("get-bill", "read_bill");
+    }).rename("get_bill", "read_bill");
 
     const { registrations, server } = fakeServer();
     tools.register(server, { context: withQbo() });
@@ -249,7 +249,7 @@ describe("createQboTools", () => {
       }),
     });
 
-    const readBill = handlers["get-bill"] as (
+    const readBill = handlers["get_bill"] as (
       args: unknown,
     ) => Promise<unknown>;
 
@@ -257,11 +257,11 @@ describe("createQboTools", () => {
 
     expect(seen[0]?.query).toEqual({ minorversion: "76" });
 
-    const replacedTools = tools.override("get-bill", async () => {
+    const replacedTools = tools.override("get_bill", async () => {
       throw new Error("boom");
     });
     const replaced = replacedTools.handlers({ context: withQbo() });
-    const failBill = replaced["get-bill"] as (
+    const failBill = replaced["get_bill"] as (
       args: unknown,
     ) => Promise<unknown>;
 
@@ -274,7 +274,7 @@ describe("createQboTools", () => {
     expect(failedBill.content[0]?.text).toBe("Error: boom");
 
     const original = tools.handlers({ context: withQbo() });
-    const originalBill = original["get-bill"] as unknown as (
+    const originalBill = original["get_bill"] as unknown as (
       args: unknown,
     ) => Promise<{ content: Array<{ text: string }> }>;
     const stillReads = await originalBill({ params: { id: "9" } });
@@ -326,7 +326,7 @@ describe("createQboTools", () => {
       for (const tool of qboTools) {
         // deleteVendor is not a node-quickbooks method. The handler throws
         // before it can return, so the tool wrapper is exercised separately.
-        if (tool.name === "delete-vendor") continue;
+        if (tool.name === "delete_vendor") continue;
         try {
           await Promise.race([
             runWithQuickbooksContext({ ...credentials, transport }, () =>
@@ -363,7 +363,7 @@ describe("createQboTools", () => {
     expect(await callAll(successTransport)).toEqual([]);
     expect(await callAll(faultTransport)).toEqual([]);
 
-    const deleteVendor = qboTools.find((tool) => tool.name === "delete-vendor");
+    const deleteVendor = qboTools.find((tool) => tool.name === "delete_vendor");
     const callDeleteVendor = (err: Error | null, deleted?: unknown) =>
       runWithQuickbooksContext(
         {
@@ -441,8 +441,8 @@ describe("embed import graph", () => {
 
     expect(listed.some((tool) => isWrite().test(tool))).toBe(false);
     expect(listed.some((tool) => tool.meta.op.kind === "report")).toBe(false);
-    expect(listed.some((tool) => tool.name === "get-bill")).toBe(true);
-    expect(listed.some((tool) => tool.name === "create-bill")).toBe(false);
+    expect(listed.some((tool) => tool.name === "get_bill")).toBe(true);
+    expect(listed.some((tool) => tool.name === "create_bill")).toBe(false);
     expect(listed.some((tool) => tool.name === "delete_invoice")).toBe(false);
   });
 
@@ -465,7 +465,7 @@ describe("embed import graph", () => {
         return next(args, ctx);
       }),
     );
-    const bill = wrappedTools.list().find((tool) => tool.name === "get-bill");
+    const bill = wrappedTools.list().find((tool) => tool.name === "get_bill");
 
     const first = (await bill?.run(
       { id: "1" },
@@ -494,7 +494,7 @@ describe("embed import graph", () => {
         throw new Error("wrapped");
       }),
     );
-    const failing = failingTools.list().find((tool) => tool.name === "get-bill");
+    const failing = failingTools.list().find((tool) => tool.name === "get_bill");
     await expect(
       failing?.run({ id: "1" }, withQbo()),
     ).resolves.toEqual({
@@ -525,7 +525,7 @@ describe("embed import graph", () => {
         return withQbo({ realmId: "registered" });
       },
     });
-    const registered = registrations.find((tool) => tool.name === "get-bill");
+    const registered = registrations.find((tool) => tool.name === "get_bill");
     await (
       registered!.handler as (args: unknown, extra?: unknown) => Promise<unknown>
     )({ params: { id: "1" } }, { requestId: "mcp-1" });
@@ -538,7 +538,7 @@ describe("embed import graph", () => {
         return withQbo({ realmId: `handler-${handlerCalls}` });
       },
     });
-    const readBill = handlers["get-bill"] as (
+    const readBill = handlers["get_bill"] as (
       args: unknown,
       extra?: unknown,
     ) => Promise<unknown>;
@@ -550,7 +550,7 @@ describe("embed import graph", () => {
         throw new Error("no creds");
       },
     });
-    const failBill = broken["get-bill"] as (
+    const failBill = broken["get_bill"] as (
       args: unknown,
     ) => Promise<unknown>;
     await expect(failBill({ params: { id: "1" } })).resolves.toEqual({

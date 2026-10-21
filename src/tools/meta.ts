@@ -5,13 +5,16 @@ export type QboToolMeta = {
   op: QboOperation;
 };
 
-// One entry per tool src/index.ts registers. delete_invoice is void:
-// QuickBooks does not delete an invoice, and the handler falls back to voidInvoice.
+// One entry per tool src/index.ts registers. Keys are the registered tool
+// names and must stay snake_case. Upstream still uses hyphens for the bill
+// and vendor CRUD tools; syncs must keep create_bill, update_bill,
+// delete_bill, get_bill, create_vendor, update_vendor, delete_vendor, and
+// get_vendor. delete_invoice is void: QuickBooks does not delete an invoice,
+// and the handler falls back to voidInvoice.
 export const TOOL_META: Record<string, QboToolMeta> = {
-  "create-bill": { entity: "Bill", op: { kind: "create", entity: "Bill" } },
-  "create-vendor": { entity: "Vendor", op: { kind: "create", entity: "Vendor" } },
   "create_account": { entity: "Account", op: { kind: "create", entity: "Account" } },
   "create_attachable": { entity: "Attachable", op: { kind: "create", entity: "Attachable" } },
+  "create_bill": { entity: "Bill", op: { kind: "create", entity: "Bill" } },
   "create_bill_payment": { entity: "BillPayment", op: { kind: "create", entity: "BillPayment" } },
   "create_class": { entity: "Class", op: { kind: "create", entity: "Class" } },
   "create_credit_memo": { entity: "CreditMemo", op: { kind: "create", entity: "CreditMemo" } },
@@ -32,10 +35,10 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "create_term": { entity: "Term", op: { kind: "create", entity: "Term" } },
   "create_time_activity": { entity: "TimeActivity", op: { kind: "create", entity: "TimeActivity" } },
   "create_transfer": { entity: "Transfer", op: { kind: "create", entity: "Transfer" } },
+  "create_vendor": { entity: "Vendor", op: { kind: "create", entity: "Vendor" } },
   "create_vendor_credit": { entity: "VendorCredit", op: { kind: "create", entity: "VendorCredit" } },
-  "delete-bill": { entity: "Bill", op: { kind: "delete", entity: "Bill" } },
-  "delete-vendor": { entity: "Vendor", op: { kind: "delete", entity: "Vendor" } },
   "delete_attachable": { entity: "Attachable", op: { kind: "delete", entity: "Attachable" } },
+  "delete_bill": { entity: "Bill", op: { kind: "delete", entity: "Bill" } },
   "delete_bill_payment": { entity: "BillPayment", op: { kind: "delete", entity: "BillPayment" } },
   "delete_credit_memo": { entity: "CreditMemo", op: { kind: "delete", entity: "CreditMemo" } },
   "delete_customer": { entity: "Customer", op: { kind: "delete", entity: "Customer" } },
@@ -52,14 +55,14 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "delete_sales_receipt": { entity: "SalesReceipt", op: { kind: "delete", entity: "SalesReceipt" } },
   "delete_time_activity": { entity: "TimeActivity", op: { kind: "delete", entity: "TimeActivity" } },
   "delete_transfer": { entity: "Transfer", op: { kind: "delete", entity: "Transfer" } },
+  "delete_vendor": { entity: "Vendor", op: { kind: "delete", entity: "Vendor" } },
   "delete_vendor_credit": { entity: "VendorCredit", op: { kind: "delete", entity: "VendorCredit" } },
-  "get-bill": { entity: "Bill", op: { kind: "get", entity: "Bill" } },
-  "get-vendor": { entity: "Vendor", op: { kind: "get", entity: "Vendor" } },
   "get_account": { entity: "Account", op: { kind: "get", entity: "Account" } },
   "get_aged_payables": { op: { kind: "report", report: "AgedPayables" } },
   "get_aged_receivables": { op: { kind: "report", report: "AgedReceivables" } },
   "get_attachable": { entity: "Attachable", op: { kind: "get", entity: "Attachable" } },
   "get_balance_sheet": { op: { kind: "report", report: "BalanceSheet" } },
+  "get_bill": { entity: "Bill", op: { kind: "get", entity: "Bill" } },
   "get_bill_payment": { entity: "BillPayment", op: { kind: "get", entity: "BillPayment" } },
   "get_cash_flow": { op: { kind: "report", report: "CashFlow" } },
   "get_class": { entity: "Class", op: { kind: "get", entity: "Class" } },
@@ -90,6 +93,7 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "get_time_activity": { entity: "TimeActivity", op: { kind: "get", entity: "TimeActivity" } },
   "get_transfer": { entity: "Transfer", op: { kind: "get", entity: "Transfer" } },
   "get_trial_balance": { op: { kind: "report", report: "TrialBalance" } },
+  "get_vendor": { entity: "Vendor", op: { kind: "get", entity: "Vendor" } },
   "get_vendor_balance": { op: { kind: "report", report: "VendorBalance" } },
   "get_vendor_credit": { entity: "VendorCredit", op: { kind: "get", entity: "VendorCredit" } },
   "get_vendor_expenses": { op: { kind: "report", report: "VendorExpenses" } },
@@ -124,10 +128,9 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "search_transfers": { entity: "Transfer", op: { kind: "query", entity: "Transfer" } },
   "search_vendor_credits": { entity: "VendorCredit", op: { kind: "query", entity: "VendorCredit" } },
   "search_vendors": { entity: "Vendor", op: { kind: "query", entity: "Vendor" } },
-  "update-bill": { entity: "Bill", op: { kind: "update", entity: "Bill" } },
-  "update-vendor": { entity: "Vendor", op: { kind: "update", entity: "Vendor" } },
   "update_account": { entity: "Account", op: { kind: "update", entity: "Account" } },
   "update_attachable": { entity: "Attachable", op: { kind: "update", entity: "Attachable" } },
+  "update_bill": { entity: "Bill", op: { kind: "update", entity: "Bill" } },
   "update_bill_payment": { entity: "BillPayment", op: { kind: "update", entity: "BillPayment" } },
   "update_class": { entity: "Class", op: { kind: "update", entity: "Class" } },
   "update_company_info": { entity: "CompanyInfo", op: { kind: "update", entity: "CompanyInfo" } },
@@ -149,6 +152,7 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "update_term": { entity: "Term", op: { kind: "update", entity: "Term" } },
   "update_time_activity": { entity: "TimeActivity", op: { kind: "update", entity: "TimeActivity" } },
   "update_transfer": { entity: "Transfer", op: { kind: "update", entity: "Transfer" } },
+  "update_vendor": { entity: "Vendor", op: { kind: "update", entity: "Vendor" } },
   "update_vendor_credit": { entity: "VendorCredit", op: { kind: "update", entity: "VendorCredit" } },
 };
 

@@ -3,7 +3,7 @@ import { qboCurrencyRefSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
-const toolName = "update-vendor";
+const toolName = "update_vendor";
 const toolDescription = "Update a vendor in QuickBooks Online.";
 const toolSchema = z.strictObject({
   vendor: z.strictObject({
