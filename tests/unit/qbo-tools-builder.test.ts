@@ -169,6 +169,20 @@ describe("createQboTools", () => {
     expect(addedHandler).not.toBe(replacedHandler);
   });
 
+  it("rejects a middleware rename that collides with an existing tool", () => {
+    const tools = createQboTools({
+      transport: async () => ({ status: 200, body: {} }),
+    });
+
+    expect(() => tools.use(rename("get_bill", "get_vendor"))).toThrow(
+      'Duplicate QuickBooks tool name "get_vendor"',
+    );
+    expect(tools.list().map((tool) => tool.name)).toContain("get_bill");
+    expect(
+      tools.list().filter((tool) => tool.name === "get_vendor"),
+    ).toHaveLength(1);
+  });
+
   it("applies middleware only when the predicate matches", () => {
     const tools = createQboTools({
       transport: async () => ({ status: 200, body: {} }),

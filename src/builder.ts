@@ -141,11 +141,6 @@ export class QboTools<TApp = unknown> {
   }
 
   add(tool: QboTool): QboTools<TApp> {
-    assertUniqueToolNames([
-      ...this.tools.map((existing) => existing.name),
-      tool.name,
-    ]);
-
     return this.branch([...this.tools, tool]);
   }
 
@@ -165,16 +160,9 @@ export class QboTools<TApp = unknown> {
 
         return next === tool.name ? tool : { ...tool, name: next };
       });
-      assertUniqueToolNames(renamed.map((tool) => tool.name));
 
       return this.branch(renamed);
     }
-
-    assertUniqueToolNames(
-      this.tools.map((tool) =>
-        tool.name === fromOrMap ? (to as string) : tool.name,
-      ),
-    );
 
     return this.use(renameTool(fromOrMap, to as string));
   }
@@ -212,6 +200,8 @@ export class QboTools<TApp = unknown> {
   }
 
   private branch(tools: readonly QboTool[]): QboTools<TApp> {
+    assertUniqueToolNames(tools.map((tool) => tool.name));
+
     return new QboTools(
       this.transport,
       this.queryDefaults,
@@ -306,10 +296,14 @@ function assertUniqueToolNames(names: readonly string[]): void {
 export function createQboTools<TApp = unknown>(
   options: QboToolsOptions<TApp>,
 ): QboTools<TApp> {
+  const tools = qboTools.map((tool) => attachToolMeta(tool));
+  // The constructor assigns this catalog directly. `branch` is not involved.
+  assertUniqueToolNames(tools.map((tool) => tool.name));
+
   return new QboTools(
     options.transport,
     options.queryDefaults,
-    qboTools.map((tool) => attachToolMeta(tool)),
+    tools,
     options.formatError,
     options.formatError !== undefined,
   );
