@@ -22,6 +22,11 @@ export type QboHttpRequest = {
 export type QboHttpResponse = {
   status: number;
   body: unknown;
+  /**
+   * Response headers, when the transport has them. `withRetry` reads
+   * `Retry-After` from this map (names are matched case-insensitively).
+   */
+  headers?: Record<string, string>;
 };
 
 export type QboCallContext = {

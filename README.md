@@ -411,6 +411,33 @@ QUICKBOOKS_ENVIRONMENT=sandbox  # or 'production'
 
 ---
 
+## Embed
+
+`createQboTools` is exported from `@qboapi/qbo-mcp-server/embed` (`dist/embed.js`). You pass a `Transport`. The library calls that function raw: it does not add retries or a QuickBooks `requestid` unless you wrap the transport yourself. The CLI does not wrap it either.
+
+Two opt-in middlewares are on the same entry.
+
+`withRequestId` sets `query.requestid` on writes (`create`, `update`, `delete`, `void`) when the query does not already have one. The id comes from `crypto.randomUUID`, or from a `generate` function you pass in. Reads (`get`, `query`, `report`) are left untouched, including their query string. An existing `query.requestid` (for example one lifted from the tool body) is kept. The middleware looks at `request.op.kind` and does not read the URL path.
+
+`withRetry` retries `429` and `500`, `502`, `503`, and `504`. The default budget is 3 attempts. The wait is exponential, starting from about 250ms, with jitter, and capped at 10 seconds. If the transport copies response headers onto `QboHttpResponse.headers`, a `Retry-After` value replaces that backoff (still capped). Reads may retry on those statuses and on errors the inner transport throws. A write retries only when `query.requestid` is already present; otherwise the first response, or the first thrown error, is returned.
+
+Apply them in this order:
+
+```ts
+import {
+  createQboTools,
+  withRequestId,
+  withRetry,
+} from "@qboapi/qbo-mcp-server/embed";
+
+const transport = withRequestId(withRetry()(rawTransport));
+const tools = createQboTools({ transport });
+```
+
+`withRequestId` runs once, around `withRetry`, so every retry of a write sends the same `requestid`. QuickBooks uses that value as an idempotency key. `withRetry` will not retry a write until `query.requestid` is already on the request it was given. Putting `withRequestId` inside `withRetry` hides the id from that check, so the write is not retried. Generating a new id on each attempt would also make a replay look like a different write, and QuickBooks could apply it twice.
+
+---
+
 ## Development
 
 ### Building

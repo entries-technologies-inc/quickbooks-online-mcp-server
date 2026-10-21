@@ -20,6 +20,12 @@ export {
   type ToolMiddleware,
 } from "./mw.js";
 export { TOOL_META, attachToolMeta, type QboToolMeta } from "./tools/meta.js";
+export {
+  withRequestId,
+  withRetry,
+  type WithRequestIdOptions,
+  type WithRetryOptions,
+} from "./transport-middleware.js";
 export type {
   QboCallContext,
   QboHttpRequest,
