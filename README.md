@@ -436,6 +436,33 @@ const tools = createQboTools({ transport });
 
 `withRequestId` runs once, around `withRetry`, so every retry of a write sends the same `requestid`. QuickBooks uses that value as an idempotency key. `withRetry` will not retry a write until `query.requestid` is already on the request it was given. Putting `withRequestId` inside `withRetry` hides the id from that check, so the write is not retried. Generating a new id on each attempt would also make a replay look like a different write, and QuickBooks could apply it twice.
 
+`npm run build` (`tsc`) emits `dist/embed.js` and `dist/embed.d.ts`, plus declarations for the types that entry re-exports. `package.json` `exports["./embed"]` points `types` at the declaration file and `import` / `default` at the JavaScript. `prepare` is that same build, so a git SHA install produces the declarations before the package is packed. The CLI entry is still excluded from this emit.
+
+Build the catalog once. Pass credentials per call instead of rebuilding all 142 tools when the token changes.
+
+```ts
+import {
+  createQboTools,
+  isWrite,
+  type QboEmbedContext,
+} from "@qboapi/qbo-mcp-server/embed";
+
+const tools = createQboTools({ transport }).exclude(isWrite());
+
+const bill = tools.list().find((tool) => tool.name === "get-bill");
+await bill?.run({ params: { id: "1" } }, {
+  accessToken,
+  realmId,
+  isSandbox: true,
+});
+```
+
+`run(args, context)` uses the builder's transport. `context.queryDefaults`, when set, overrides the defaults passed to `createQboTools`. A thrown handler becomes `{ isError: true, content: [{ type: "text", text }] }`, the same shape `register` returns. `.use()` and `wrapRun` wrap the handler `run` calls.
+
+`register(server, { context })` and `handlers({ context })` still accept a `QboEmbedContext` object. `context` may also be `(extra) => QboEmbedContext | Promise<QboEmbedContext>`, called on every invocation. `extra` is the MCP request extra.
+
+`.exclude` accepts a tool name, a list of names, `(tool) => boolean`, or a predicate. `tool.meta.op` is the semantic operation (`get`, `query`, `report`, `create`, `update`, `delete`, `void`). `exclude(isWrite())` drops every write, including void. A function can read `tool.meta` directly, for example `(tool) => tool.meta.op.kind === "report"`.
+
 ---
 
 ## Development

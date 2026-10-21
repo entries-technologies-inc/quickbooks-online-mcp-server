@@ -403,4 +403,129 @@ describe("embed import graph", () => {
 
     expect(seen.size).toBeGreaterThan(10);
   });
+
+  it("excludes writes with isWrite and reports by tool.meta", () => {
+    const tools = createQboTools({
+      transport: async () => ({ status: 200, body: {} }),
+    })
+      .exclude(isWrite())
+      .exclude((tool) => tool.meta.op.kind === "report");
+
+    const listed = tools.list();
+
+    expect(listed.some((tool) => isWrite().test(tool))).toBe(false);
+    expect(listed.some((tool) => tool.meta.op.kind === "report")).toBe(false);
+    expect(listed.some((tool) => tool.name === "get-bill")).toBe(true);
+    expect(listed.some((tool) => tool.name === "create-bill")).toBe(false);
+    expect(listed.some((tool) => tool.name === "delete_invoice")).toBe(false);
+  });
+
+  it("runs a listed tool with per-call context and applies wrapRun", async () => {
+    const seen: Array<{ realmId: string; minorversion?: string }> = [];
+    const tools = createQboTools({
+      transport: async (request, callContext) => {
+        seen.push({
+          realmId: callContext.realmId,
+          minorversion: request.query?.minorversion,
+        });
+        return { status: 200, body: billBody };
+      },
+      queryDefaults: { minorversion: "73" },
+    });
+    let wrapped = 0;
+    tools.use(
+      wrapRun((handler) => async (args, extra) => {
+        wrapped += 1;
+        return handler(args, extra);
+      }),
+    );
+    const bill = tools.list().find((tool) => tool.name === "get-bill");
+
+    const first = (await bill?.run({ params: { id: "1" } }, {
+      ...credentials,
+      realmId: "realm-a",
+    })) as { content: Array<{ text: string }> };
+    const second = await bill?.run(
+      { params: { id: "2" } },
+      {
+        ...credentials,
+        realmId: "realm-b",
+        queryDefaults: { minorversion: "76", format: false },
+      },
+    );
+
+    expect(wrapped).toBe(2);
+    expect(first.content[0]?.text).toBe(
+      JSON.stringify({ Id: "1", SyncToken: "0" }),
+    );
+    expect(second).toBeDefined();
+    expect(seen).toEqual([
+      { realmId: "realm-a", minorversion: "73" },
+      { realmId: "realm-b", minorversion: "76" },
+    ]);
+
+    tools.use(
+      wrapRun(() => async () => {
+        throw new Error("wrapped");
+      }),
+    );
+    const failing = tools.list().find((tool) => tool.name === "get-bill");
+    await expect(failing?.run({ params: { id: "1" } }, credentials)).resolves.toEqual({
+      isError: true,
+      content: [{ type: "text", text: "Error: wrapped" }],
+    });
+  });
+
+  it("resolves register and handlers context on each call", async () => {
+    const seen: string[] = [];
+    const tools = createQboTools({
+      transport: async (_request, callContext) => {
+        seen.push(callContext.realmId);
+        return { status: 200, body: billBody };
+      },
+    });
+    const { registrations, server } = fakeServer();
+    const extras: unknown[] = [];
+    tools.register(server, {
+      context: (extra) => {
+        extras.push(extra);
+        return { ...credentials, realmId: "registered" };
+      },
+    });
+    const registered = registrations.find((tool) => tool.name === "get-bill");
+    await (
+      registered!.handler as (args: unknown, extra?: unknown) => Promise<unknown>
+    )({ params: { id: "1" } }, { requestId: "mcp-1" });
+
+    let handlerCalls = 0;
+    const handlers = tools.handlers({
+      context: async (extra) => {
+        handlerCalls += 1;
+        expect(extra).toEqual({ requestId: `h${handlerCalls}` });
+        return { ...credentials, realmId: `handler-${handlerCalls}` };
+      },
+    });
+    const readBill = handlers["get-bill"] as (
+      args: unknown,
+      extra?: unknown,
+    ) => Promise<unknown>;
+    await readBill({ params: { id: "1" } }, { requestId: "h1" });
+    await readBill({ params: { id: "1" } }, { requestId: "h2" });
+
+    const broken = tools.handlers({
+      context: () => {
+        throw new Error("no creds");
+      },
+    });
+    const failBill = broken["get-bill"] as (
+      args: unknown,
+    ) => Promise<unknown>;
+    await expect(failBill({ params: { id: "1" } })).resolves.toEqual({
+      isError: true,
+      content: [{ type: "text", text: "Error: no creds" }],
+    });
+
+    expect(extras).toEqual([{ requestId: "mcp-1" }]);
+    expect(seen).toEqual(["registered", "handler-1", "handler-2"]);
+  });
 });

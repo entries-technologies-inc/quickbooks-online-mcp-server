@@ -1,6 +1,8 @@
 export {
   createQboTools,
   type QboEmbedContext,
+  type QboEmbedContextResolver,
+  type QboListedTool,
   type QboTool,
   type QboToolsOptions,
 } from "./builder.js";

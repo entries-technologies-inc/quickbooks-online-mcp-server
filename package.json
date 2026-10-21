@@ -6,7 +6,11 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./embed": "./dist/embed.js"
+    "./embed": {
+      "types": "./dist/embed.d.ts",
+      "import": "./dist/embed.js",
+      "default": "./dist/embed.js"
+    }
   },
   "type": "module",
   "bin": "./dist/index.js",
