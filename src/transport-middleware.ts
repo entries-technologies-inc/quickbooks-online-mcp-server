@@ -3,7 +3,6 @@ import type {
   QboHttpResponse,
   QboOperation,
   Transport,
-  TransportMiddleware,
 } from "./transport.js";
 
 const WRITE_KINDS = new Set<QboOperation["kind"]>([
@@ -88,7 +87,9 @@ function delayMs(
   return capped * (0.5 + Math.random() * 0.5);
 }
 
-function applyRequestId(options?: WithRequestIdOptions): TransportMiddleware {
+function applyRequestId(
+  options?: WithRequestIdOptions,
+): <TApp>(next: Transport<TApp>) => Transport<TApp> {
   const generate = options?.generate ?? randomUUID;
 
   return (next) => (request, context) => {
@@ -126,13 +127,15 @@ function applyRequestId(options?: WithRequestIdOptions): TransportMiddleware {
  * keeps a stable key. Generating a fresh id per attempt would make each
  * replay look like a different write.
  */
-export function withRequestId(next: Transport): Transport;
+export function withRequestId<TApp>(next: Transport<TApp>): Transport<TApp>;
 export function withRequestId(
   options?: WithRequestIdOptions,
-): TransportMiddleware;
+): <TApp>(next: Transport<TApp>) => Transport<TApp>;
 export function withRequestId(
-  optionsOrNext?: WithRequestIdOptions | Transport,
-): TransportMiddleware | Transport {
+  optionsOrNext?: WithRequestIdOptions | Transport<any>,
+):
+  | (<TApp>(next: Transport<TApp>) => Transport<TApp>)
+  | Transport<any> {
   if (typeof optionsOrNext === "function") {
     return applyRequestId()(optionsOrNext);
   }
@@ -159,7 +162,9 @@ export function withRequestId(
  * `withRequestId(withRetry()(transport))`.
  * See `withRequestId` for why that order matters.
  */
-export function withRetry(options: WithRetryOptions = {}): TransportMiddleware {
+export function withRetry(
+  options: WithRetryOptions = {},
+): <TApp>(next: Transport<TApp>) => Transport<TApp> {
   const maxAttempts = options.maxAttempts ?? 3;
   const baseDelayMs = options.baseDelayMs ?? 250;
   const maxDelayMs = options.maxDelayMs ?? 10_000;

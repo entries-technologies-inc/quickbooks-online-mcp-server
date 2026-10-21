@@ -103,7 +103,7 @@ function liftEntityQueryFlags(
 }
 
 async function execute(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   request: QboHttpRequest,
 ): Promise<RawResult> {
   const prepared: QboHttpRequest = {
@@ -171,7 +171,7 @@ function operationFor(
 }
 
 function send(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   kind: QboOperation["kind"],
   entityName: string,
   method: "GET" | "POST",
@@ -196,7 +196,7 @@ function send(
 }
 
 function read(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   entityName: string,
   id: unknown,
   callback: unknown,
@@ -215,7 +215,7 @@ function read(
 }
 
 function create(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   entityName: string,
   entity: unknown,
   callback: unknown,
@@ -240,7 +240,7 @@ function missingIdentity(value: unknown): boolean {
 }
 
 function update(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   entityName: string,
   entity: Record<string, any>,
   callback: unknown,
@@ -292,7 +292,7 @@ function update(
 }
 
 function postOperation(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   kind: "delete" | "void",
   entityName: string,
   entity: unknown,
@@ -313,7 +313,7 @@ function postOperation(
 }
 
 function deleteOrVoid(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   kind: "delete" | "void",
   entityName: string,
   idOrEntity: unknown,
@@ -335,7 +335,7 @@ function deleteOrVoid(
 }
 
 async function runQuery(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   entityName: string,
   rawCriteria: unknown,
 ): Promise<unknown> {
@@ -385,7 +385,7 @@ async function runQuery(
 }
 
 function find(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   entityName: string,
   criteria: unknown,
   callback: unknown,
@@ -403,7 +403,7 @@ function find(
 }
 
 function report(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   reportName: string,
   options: unknown,
   callback: unknown,
@@ -424,7 +424,7 @@ function report(
 }
 
 function invoke(
-  context: QboCallContext,
+  context: QboCallContext<any>,
   spec: MethodSpec,
   args: unknown[],
 ): void {
@@ -471,8 +471,9 @@ function invoke(
 }
 
 export function createQuickbooksProxy(
-  context: QboCallContext,
+  input: Omit<QboCallContext<any>, "app"> & { app?: unknown },
 ): QuickbooksProxy {
+  const context: QboCallContext<any> = { ...input, app: input.app };
   const target = { realmId: context.realmId };
 
   return new Proxy(target, {

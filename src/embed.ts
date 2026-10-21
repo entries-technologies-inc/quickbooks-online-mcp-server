@@ -1,9 +1,11 @@
 export {
   createQboTools,
+  type QboCredentials,
   type QboEmbedContext,
   type QboEmbedContextResolver,
   type QboListedTool,
   type QboTool,
+  type QboToolCallContext,
   type QboToolsOptions,
 } from "./builder.js";
 export {
@@ -20,6 +22,7 @@ export {
   wrapRun,
   type QboToolPredicate,
   type ToolMiddleware,
+  type ToolRun,
 } from "./mw.js";
 export { TOOL_META, attachToolMeta, type QboToolMeta } from "./tools/meta.js";
 export {

@@ -14,6 +14,7 @@ import type {
 const context: QboCallContext = {
   realmId: "123",
   transport: async () => ({ status: 200, body: null }),
+  app: undefined,
 };
 
 function request(

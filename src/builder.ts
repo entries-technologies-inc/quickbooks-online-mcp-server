@@ -2,42 +2,48 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runWithQuickbooksContext } from "./clients/quickbooks-client.js";
 import { formatError } from "./helpers/format-error.js";
 import { RegisterTool } from "./helpers/register-tool.js";
-import type { ToolMiddleware, QboToolPredicate } from "./mw.js";
-import { rename as renameTool } from "./mw.js";
-import type { QboTool } from "./qbo-tool.js";
+import {
+  rename as renameTool,
+  type QboCredentials,
+  type QboToolCallContext,
+  type QboToolPredicate,
+  type ToolMiddleware,
+  type ToolRun,
+} from "./mw.js";
+import type { QboRunLayer, QboTool } from "./qbo-tool.js";
 import { qboTools } from "./tools/catalog.js";
 import { attachToolMeta } from "./tools/meta.js";
 import type { QueryDefaults } from "./query-defaults.js";
 import type { Transport } from "./transport.js";
 
-export type { QboTool };
+export type { QboTool, QboCredentials, QboToolCallContext };
 
-export type QboEmbedContext = {
-  accessToken: string;
-  realmId: string;
-  isSandbox: boolean;
-  baseUrl?: string;
-  queryDefaults?: QueryDefaults;
-};
+/** Same shape as {@link QboToolCallContext}. */
+export type QboEmbedContext<TApp = unknown> = QboToolCallContext<TApp>;
 
-export type QboToolsOptions = {
-  transport: Transport;
+export type QboToolsOptions<TApp = unknown> = {
+  transport: Transport<TApp>;
   queryDefaults?: QueryDefaults;
 };
 
 /** Resolved on each tool call. `extra` is the MCP request extra when registered. */
-export type QboEmbedContextResolver = (
+export type QboEmbedContextResolver<TApp = unknown> = (
   extra: unknown,
-) => QboEmbedContext | Promise<QboEmbedContext>;
+) => QboToolCallContext<TApp> | Promise<QboToolCallContext<TApp>>;
 
-export type QboListedTool = QboTool & {
-  run: (args: unknown, context: QboEmbedContext) => Promise<unknown>;
+export type QboListedTool<TApp = unknown> = QboTool & {
+  run: (args: unknown, ctx: QboToolCallContext<TApp>) => Promise<unknown>;
 };
 
-type ContextSource = QboEmbedContext | QboEmbedContextResolver;
+type ContextSource<TApp> =
+  | QboToolCallContext<TApp>
+  | QboEmbedContextResolver<TApp>;
 
 type ExcludeSelector =
   string | string[] | QboToolPredicate | ((tool: QboTool) => boolean);
+
+export const MISSING_QBO_CONTEXT =
+  "QuickBooks context missing: pass ctx.qbo or set it in middleware";
 
 function toolIsExcluded(selector: ExcludeSelector): (tool: QboTool) => boolean {
   if (typeof selector === "string") return (tool) => tool.name === selector;
@@ -51,58 +57,68 @@ function toolIsExcluded(selector: ExcludeSelector): (tool: QboTool) => boolean {
   return (tool) => selector.test(tool);
 }
 
-export class QboTools {
-  private tools: QboTool[];
+export class QboTools<TApp = unknown> {
+  private readonly tools: readonly QboTool[];
 
   constructor(
-    private readonly transport: Transport,
+    private readonly transport: Transport<TApp>,
     private readonly queryDefaults: QueryDefaults | undefined,
-    tools: QboTool[],
+    tools: readonly QboTool[],
   ) {
     this.tools = tools;
   }
 
-  exclude(selector: ExcludeSelector): this {
+  exclude(selector: ExcludeSelector): QboTools<TApp> {
     const matches = toolIsExcluded(selector);
-    this.tools = this.tools.filter((tool) => !matches(tool));
 
-    return this;
+    return this.branch(this.tools.filter((tool) => !matches(tool)));
   }
 
-  override(toolName: string, handler: QboTool["handler"]): this {
-    const tool = this.tools.find((candidate) => candidate.name === toolName);
-    if (!tool) throw new Error(`Unknown QuickBooks tool "${toolName}"`);
-    tool.handler = handler;
+  override(toolName: string, handler: QboTool["handler"]): QboTools<TApp> {
+    const index = this.tools.findIndex((tool) => tool.name === toolName);
+    if (index < 0) throw new Error(`Unknown QuickBooks tool "${toolName}"`);
+    const tools = this.tools.slice();
+    const current = tools[index] as QboTool;
+    tools[index] = { ...current, handler };
 
-    return this;
+    return this.branch(tools);
   }
 
-  add(tool: QboTool): this {
-    this.tools.push(tool);
-
-    return this;
+  add(tool: QboTool): QboTools<TApp> {
+    return this.branch([...this.tools, tool]);
   }
 
-  use(middleware: ToolMiddleware): this {
-    this.tools = this.tools.map(middleware);
-
-    return this;
+  use(middleware: ToolMiddleware<TApp>): QboTools<TApp> {
+    return this.branch(this.tools.map((tool) => middleware(tool)));
   }
 
-  rename(from: string, to: string): this {
-    return this.use(renameTool(from, to));
+  rename(from: string, to: string): QboTools<TApp>;
+  rename(mapName: (name: string) => string): QboTools<TApp>;
+  rename(
+    fromOrMap: string | ((name: string) => string),
+    to?: string,
+  ): QboTools<TApp> {
+    if (typeof fromOrMap === "function") {
+      return this.use((tool) => {
+        const next = fromOrMap(tool.name);
+
+        return next === tool.name ? tool : { ...tool, name: next };
+      });
+    }
+
+    return this.use(renameTool(fromOrMap, to as string));
   }
 
-  list(): QboListedTool[] {
+  list(): QboListedTool<TApp>[] {
     return this.tools.map((tool) => ({
       ...tool,
-      run: (args, context) => this.call(tool, args, context),
+      run: (args, ctx) => this.call(tool, args, ctx),
     }));
   }
 
   register(
     server: McpServer,
-    options: { context: QboEmbedContext | QboEmbedContextResolver },
+    options: { context: ContextSource<TApp> },
   ): this {
     for (const tool of this.tools) {
       RegisterTool(server, {
@@ -115,7 +131,7 @@ export class QboTools {
   }
 
   handlers(options: {
-    context: QboEmbedContext | QboEmbedContextResolver;
+    context: ContextSource<TApp>;
   }): Record<string, QboTool["handler"]> {
     const handlersByName: Record<string, QboTool["handler"]> = {};
     for (const tool of this.tools) {
@@ -125,7 +141,14 @@ export class QboTools {
     return handlersByName;
   }
 
-  private handlerInContext(tool: QboTool, source: ContextSource): QboTool["handler"] {
+  private branch(tools: readonly QboTool[]): QboTools<TApp> {
+    return new QboTools(this.transport, this.queryDefaults, tools);
+  }
+
+  private handlerInContext(
+    tool: QboTool,
+    source: ContextSource<TApp>,
+  ): QboTool["handler"] {
     return (async (args: unknown, extra?: unknown) =>
       this.call(tool, args, source, extra)) as QboTool["handler"];
   }
@@ -133,28 +156,15 @@ export class QboTools {
   private async call(
     tool: QboTool,
     args: unknown,
-    source: ContextSource,
+    source: ContextSource<TApp>,
     extra?: unknown,
   ): Promise<unknown> {
     try {
-      const context = await resolveEmbedContext(source, extra);
-      const queryDefaults = context.queryDefaults ?? this.queryDefaults;
-      const runTool = tool.handler as (
-        args: unknown,
-        extra?: unknown,
-      ) => Promise<unknown>;
+      const resolved =
+        typeof source === "function" ? await source(extra) : source;
+      const ctx = extra === undefined ? resolved : { ...resolved, extra };
 
-      return await runWithQuickbooksContext(
-        {
-          accessToken: context.accessToken,
-          realmId: context.realmId,
-          isSandbox: context.isSandbox,
-          baseUrl: context.baseUrl,
-          transport: this.transport,
-          queryDefaults,
-        },
-        () => (extra === undefined ? runTool(args) : runTool(args, extra)),
-      );
+      return await this.compose(tool)(args, ctx);
     } catch (error) {
       return {
         isError: true,
@@ -162,18 +172,44 @@ export class QboTools {
       };
     }
   }
+
+  private compose(tool: QboTool): ToolRun<TApp> {
+    const terminal: ToolRun<TApp> = async (args, ctx) => {
+      const qbo = ctx.qbo;
+      if (!qbo) throw new Error(MISSING_QBO_CONTEXT);
+      const queryDefaults = qbo.queryDefaults ?? this.queryDefaults;
+      const runTool = tool.handler as (
+        args: unknown,
+        extra?: unknown,
+      ) => Promise<unknown>;
+
+      return runWithQuickbooksContext(
+        {
+          accessToken: qbo.accessToken,
+          realmId: qbo.realmId,
+          isSandbox: qbo.isSandbox,
+          baseUrl: qbo.baseUrl,
+          transport: this.transport,
+          queryDefaults,
+          app: ctx.app,
+        },
+        () =>
+          ctx.extra === undefined ? runTool(args) : runTool(args, ctx.extra),
+      );
+    };
+
+    const layers = (tool.runLayers ?? []) as readonly QboRunLayer[];
+
+    return layers.reduce<ToolRun<TApp>>(
+      (next, layer) => layer(next, tool) as ToolRun<TApp>,
+      terminal,
+    );
+  }
 }
 
-function resolveEmbedContext(
-  source: ContextSource,
-  extra: unknown,
-): QboEmbedContext | Promise<QboEmbedContext> {
-  if (typeof source === "function") return source(extra);
-
-  return source;
-}
-
-export function createQboTools(options: QboToolsOptions): QboTools {
+export function createQboTools<TApp = unknown>(
+  options: QboToolsOptions<TApp>,
+): QboTools<TApp> {
   return new QboTools(
     options.transport,
     options.queryDefaults,

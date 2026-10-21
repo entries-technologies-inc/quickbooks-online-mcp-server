@@ -28,6 +28,15 @@ const credentials = {
   baseUrl: "https://sandbox-quickbooks.api.intuit.com",
 };
 
+function withQbo(
+  qbo: Partial<typeof credentials> & {
+    queryDefaults?: { minorversion?: string | false; format?: string | false };
+  } = {},
+  app: unknown = undefined,
+) {
+  return { qbo: { ...credentials, ...qbo }, app };
+}
+
 const billBody = { Bill: { Id: "1", SyncToken: "0" }, time: "t" };
 
 function recordedTransport(seen: QboHttpRequest[]) {
@@ -121,22 +130,30 @@ describe("createQboTools", () => {
 
     const bill = tools.list().find((tool) => tool.name === "get-bill");
     expect(bill).toBeDefined();
-    tools.add({
+    const added = tools.add({
       ...(bill as QboTool),
       name: "get_custom",
       description: "custom",
       handler: async () => ({ content: [{ type: "text", text: "custom" }] }),
     });
-    expect(tools.list().map((tool) => tool.name)).toContain("get_custom");
+    expect(added.list().map((tool) => tool.name)).toContain("get_custom");
+    expect(tools.list().map((tool) => tool.name)).not.toContain("get_custom");
     expect(() => tools.override("not-registered", bill!.handler)).toThrow(
       'Unknown QuickBooks tool "not-registered"',
     );
-    tools.override("get_custom", async () => ({
+    const replaced = added.override("get_custom", async () => ({
       content: [{ type: "text", text: "replaced" }],
     }));
     expect(
-      tools.list().find((tool) => tool.name === "get_custom")?.description,
+      replaced.list().find((tool) => tool.name === "get_custom")?.description,
     ).toBe("custom");
+    const addedHandler = added
+      .list()
+      .find((tool) => tool.name === "get_custom")?.handler;
+    const replacedHandler = replaced
+      .list()
+      .find((tool) => tool.name === "get_custom")?.handler;
+    expect(addedHandler).not.toBe(replacedHandler);
   });
 
   it("applies middleware only when the predicate matches", () => {
@@ -146,7 +163,7 @@ describe("createQboTools", () => {
       pipe(
         when(name("get-bill"), describeTool("bill by id")),
         when(name("get-vendor"), describeTool("vendor by id")),
-        wrapRun((handler) => handler),
+        wrapRun((next) => (args, ctx) => next(args, ctx)),
       ),
     );
 
@@ -200,7 +217,7 @@ describe("createQboTools", () => {
     }).rename("get-bill", "read_bill");
 
     const { registrations, server } = fakeServer();
-    tools.register(server, { context: credentials });
+    tools.register(server, { context: withQbo() });
     const registered = registrations.find((tool) => tool.name === "read_bill");
 
     const result = (await registered!.handler({
@@ -227,10 +244,9 @@ describe("createQboTools", () => {
     });
 
     const handlers = tools.handlers({
-      context: {
-        ...credentials,
+      context: withQbo({
         queryDefaults: { minorversion: "76", format: false },
-      },
+      }),
     });
 
     const readBill = handlers["get-bill"] as (
@@ -241,10 +257,10 @@ describe("createQboTools", () => {
 
     expect(seen[0]?.query).toEqual({ minorversion: "76" });
 
-    tools.override("get-bill", async () => {
+    const replacedTools = tools.override("get-bill", async () => {
       throw new Error("boom");
     });
-    const replaced = tools.handlers({ context: credentials });
+    const replaced = replacedTools.handlers({ context: withQbo() });
     const failBill = replaced["get-bill"] as (
       args: unknown,
     ) => Promise<unknown>;
@@ -256,6 +272,16 @@ describe("createQboTools", () => {
 
     expect(failedBill.isError).toBe(true);
     expect(failedBill.content[0]?.text).toBe("Error: boom");
+
+    const original = tools.handlers({ context: withQbo() });
+    const originalBill = original["get-bill"] as unknown as (
+      args: unknown,
+    ) => Promise<{ content: Array<{ text: string }> }>;
+    const stillReads = await originalBill({ params: { id: "9" } });
+    expect(stillReads.content[0]?.text).toBe(
+      JSON.stringify({ Id: "1", SyncToken: "0" }),
+    );
+    expect(seen).toHaveLength(2);
   });
 
   it("runs every tool handler through a success and a fault response", async () => {
@@ -433,25 +459,24 @@ describe("embed import graph", () => {
       queryDefaults: { minorversion: "73" },
     });
     let wrapped = 0;
-    tools.use(
-      wrapRun((handler) => async (args, extra) => {
+    const wrappedTools = tools.use(
+      wrapRun((next) => async (args, ctx) => {
         wrapped += 1;
-        return handler(args, extra);
+        return next(args, ctx);
       }),
     );
-    const bill = tools.list().find((tool) => tool.name === "get-bill");
+    const bill = wrappedTools.list().find((tool) => tool.name === "get-bill");
 
-    const first = (await bill?.run({ params: { id: "1" } }, {
-      ...credentials,
-      realmId: "realm-a",
-    })) as { content: Array<{ text: string }> };
+    const first = (await bill?.run(
+      { params: { id: "1" } },
+      withQbo({ realmId: "realm-a" }),
+    )) as { content: Array<{ text: string }> };
     const second = await bill?.run(
       { params: { id: "2" } },
-      {
-        ...credentials,
+      withQbo({
         realmId: "realm-b",
         queryDefaults: { minorversion: "76", format: false },
-      },
+      }),
     );
 
     expect(wrapped).toBe(2);
@@ -464,16 +489,21 @@ describe("embed import graph", () => {
       { realmId: "realm-b", minorversion: "76" },
     ]);
 
-    tools.use(
+    const failingTools = wrappedTools.use(
       wrapRun(() => async () => {
         throw new Error("wrapped");
       }),
     );
-    const failing = tools.list().find((tool) => tool.name === "get-bill");
-    await expect(failing?.run({ params: { id: "1" } }, credentials)).resolves.toEqual({
+    const failing = failingTools.list().find((tool) => tool.name === "get-bill");
+    await expect(
+      failing?.run({ params: { id: "1" } }, withQbo()),
+    ).resolves.toEqual({
       isError: true,
       content: [{ type: "text", text: "Error: wrapped" }],
     });
+    await bill?.run({ params: { id: "1" } }, withQbo({ realmId: "realm-a" }));
+    expect(wrapped).toBe(3);
+    expect(seen).toHaveLength(3);
   });
 
   it("resolves register and handlers context on each call", async () => {
@@ -489,7 +519,7 @@ describe("embed import graph", () => {
     tools.register(server, {
       context: (extra) => {
         extras.push(extra);
-        return { ...credentials, realmId: "registered" };
+        return withQbo({ realmId: "registered" });
       },
     });
     const registered = registrations.find((tool) => tool.name === "get-bill");
@@ -502,7 +532,7 @@ describe("embed import graph", () => {
       context: async (extra) => {
         handlerCalls += 1;
         expect(extra).toEqual({ requestId: `h${handlerCalls}` });
-        return { ...credentials, realmId: `handler-${handlerCalls}` };
+        return withQbo({ realmId: `handler-${handlerCalls}` });
       },
     });
     const readBill = handlers["get-bill"] as (

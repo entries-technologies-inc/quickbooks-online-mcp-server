@@ -29,18 +29,22 @@ export type QboHttpResponse = {
   headers?: Record<string, string>;
 };
 
-export type QboCallContext = {
+export type QboCallContext<TApp = unknown> = {
   realmId: string;
-  transport: Transport;
+  transport: Transport<TApp>;
   accessToken?: string;
   isSandbox?: boolean;
   baseUrl?: string;
   queryDefaults?: QueryDefaults;
+  /** App data from the tool call context. Kept separate from QuickBooks credentials. */
+  app: TApp;
 };
 
-export type Transport = (
+export type Transport<TApp = unknown> = (
   request: QboHttpRequest,
-  context: QboCallContext,
+  context: QboCallContext<TApp>,
 ) => Promise<QboHttpResponse>;
 
-export type TransportMiddleware = (next: Transport) => Transport;
+export type TransportMiddleware<TApp = unknown> = (
+  next: Transport<TApp>,
+) => Transport<TApp>;

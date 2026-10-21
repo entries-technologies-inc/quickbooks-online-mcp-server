@@ -10,14 +10,16 @@ export type QuickbooksApi = {
   [method: string]: any;
 };
 
-export type InjectedQuickbooksContext = {
+export type InjectedQuickbooksContext<TApp = any> = {
   quickbooks?: QuickbooksApi;
   accessToken: string;
   realmId: string;
   isSandbox: boolean;
   baseUrl?: string;
-  transport?: Transport;
+  transport?: Transport<TApp>;
   queryDefaults?: QueryDefaults;
+  /** App payload from the tool call, forwarded to the transport. */
+  app?: TApp;
 };
 
 export type QuickbooksAuthCredentials = {
@@ -32,7 +34,7 @@ type OAuthFallback = {
 };
 
 const injectedQuickbooksContextStorage =
-  new AsyncLocalStorage<InjectedQuickbooksContext>();
+  new AsyncLocalStorage<InjectedQuickbooksContext<any>>();
 
 let oauthFallback: OAuthFallback | undefined;
 
@@ -40,8 +42,8 @@ export function registerQuickbooksOAuthFallback(fallback: OAuthFallback): void {
   oauthFallback = fallback;
 }
 
-export function runWithQuickbooksContext<T>(
-  context: InjectedQuickbooksContext,
+export function runWithQuickbooksContext<T, TApp = any>(
+  context: InjectedQuickbooksContext<TApp>,
   fn: () => Promise<T> | T,
 ): Promise<T> | T {
   return injectedQuickbooksContextStorage.run(context, fn);
@@ -63,6 +65,7 @@ export class QuickbooksClient {
         isSandbox: injected.isSandbox,
         baseUrl: injected.baseUrl,
         queryDefaults: injected.queryDefaults,
+        app: injected.app,
       });
     }
     if (injected?.quickbooks) return injected.quickbooks;

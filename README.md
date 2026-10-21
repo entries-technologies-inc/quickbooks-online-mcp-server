@@ -413,6 +413,8 @@ QUICKBOOKS_ENVIRONMENT=sandbox  # or 'production'
 
 ## Embed
 
+Library guide: [docs/LIBRARY.md](docs/LIBRARY.md).
+
 `createQboTools` is exported from `@qboapi/qbo-mcp-server/embed` (`dist/embed.js`). You pass a `Transport`. The library calls that function raw: it does not add retries or a QuickBooks `requestid` unless you wrap the transport yourself. The CLI does not wrap it either.
 
 Two opt-in middlewares are on the same entry.
