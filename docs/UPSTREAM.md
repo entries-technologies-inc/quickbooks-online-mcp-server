@@ -92,7 +92,7 @@ File names stay hyphenated. These eight registered names are snake_case. Upstrea
 | `delete-vendor` | `delete_vendor` |
 | `get-vendor` | `get_vendor` |
 
-Every other tool name was already snake_case on both sides. `src/tools/catalog.ts` is the list `src/index.ts` registers. `src/tools/meta.ts` has one entry per name. `delete_invoice` is `void`.
+Every other tool name was already snake_case on both sides. `src/tools/catalog.ts` is the list `src/index.ts` registers. `src/tools/meta.ts` has one entry per name. `delete_invoice` is `void`. `delete_vendor` marks the vendor inactive with `updateVendor` (`Id`, `SyncToken`, `Active: false`, `sparse: true`). QuickBooks and node-quickbooks 2.0.50 have no vendor delete. Do not add a `deleteVendor` spec.
 
 Write tools Entries Core calls use `z.strictObject()`. `src/helpers/register-tool.ts` still warns on unknown keys for plain `z.object()` schemas, and it still treats both `create_` and `create-` as disable prefixes. `src/helpers/currency-fields.helper.ts` is fork-only multicurrency input.
 

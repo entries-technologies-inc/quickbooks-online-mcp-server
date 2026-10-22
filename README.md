@@ -219,7 +219,7 @@ Complete CRUD operations are available for all entity types:
 | `create_vendor` | Create a new vendor |
 | `get_vendor` | Get vendor by ID |
 | `update_vendor` | Update vendor details |
-| `delete_vendor` | Delete a vendor |
+| `delete_vendor` | Mark a vendor inactive |
 | `search_vendors` | Search vendors with filters |
 | `create_bill_payment` | Create a bill payment |
 | `get_bill_payment` | Get bill payment by ID |
@@ -455,7 +455,7 @@ const tools = createQboTools({ transport }).exclude(isWrite());
 const bill = tools.list().find((tool) => tool.name === "get_bill");
 await bill?.run(
   { id: "1" },
-  { qbo: { accessToken, realmId, isSandbox: true } },
+  { qbo: { accessToken, realmId, isSandbox: true }, app },
 );
 ```
 

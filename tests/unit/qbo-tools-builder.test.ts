@@ -77,6 +77,10 @@ describe("tool metadata", () => {
       kind: "void",
       entity: "Invoice",
     });
+    expect(TOOL_META["delete_vendor"]?.op).toEqual({
+      kind: "update",
+      entity: "Vendor",
+    });
     expect(TOOL_META["get_general_ledger"]?.op).toEqual({
       kind: "report",
       report: "GeneralLedger",
@@ -351,9 +355,6 @@ describe("createQboTools", () => {
     const callAll = async (transport: Transport) => {
       const failures: string[] = [];
       for (const tool of qboTools) {
-        // deleteVendor is not a node-quickbooks method. The handler throws
-        // before it can return, so the tool wrapper is exercised separately.
-        if (tool.name === "delete_vendor") continue;
         try {
           await Promise.race([
             runWithQuickbooksContext({ ...credentials, transport }, () =>
@@ -389,31 +390,43 @@ describe("createQboTools", () => {
 
     expect(await callAll(successTransport)).toEqual([]);
     expect(await callAll(faultTransport)).toEqual([]);
+  });
 
-    const deleteVendor = qboTools.find((tool) => tool.name === "delete_vendor");
-    const callDeleteVendor = (err: Error | null, deleted?: unknown) =>
-      runWithQuickbooksContext(
-        {
-          ...credentials,
-          quickbooks: {
-            realmId: credentials.realmId,
-            deleteVendor: (
-              _vendor: unknown,
-              callback: (error: unknown, result?: unknown) => void,
-            ) => callback(err, deleted),
-          },
-        },
-        () =>
-          (
-            deleteVendor!.handler as (
-              args: unknown,
-              extra?: unknown,
-            ) => Promise<unknown>
-          )({ params: { vendor: { Id: "1", SyncToken: "0" } } }, {}),
-      );
+  it("marks a vendor inactive through the transport proxy", async () => {
+    const seen: QboHttpRequest[] = [];
+    const tools = createQboTools({
+      transport: async (request) => {
+        seen.push(request);
 
-    await callDeleteVendor(null, { Id: "1" });
-    await callDeleteVendor(new Error("no"));
+        return {
+          status: 200,
+          body: { Vendor: { Id: "1", SyncToken: "1", Active: false } },
+        };
+      },
+    });
+    const deleteVendor = tools
+      .list()
+      .find((tool) => tool.name === "delete_vendor");
+
+    const result = (await deleteVendor?.run(
+      { vendor: { Id: "1", SyncToken: "0" } },
+      withQbo(),
+    )) as { content: Array<{ text: string }> };
+
+    expect(seen).toEqual([
+      {
+        op: { kind: "update", entity: "Vendor" },
+        method: "POST",
+        path: "/vendor",
+        query: { operation: "update", minorversion: "75", format: "json" },
+        body: { Id: "1", SyncToken: "0", Active: false, sparse: true },
+      },
+    ]);
+    expect(JSON.parse(result.content[0]?.text ?? "")).toEqual({
+      Id: "1",
+      SyncToken: "1",
+      Active: false,
+    });
   });
 });
 

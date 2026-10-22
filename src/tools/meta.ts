@@ -10,7 +10,9 @@ export type QboToolMeta = {
 // and vendor CRUD tools; syncs must keep create_bill, update_bill,
 // delete_bill, get_bill, create_vendor, update_vendor, delete_vendor, and
 // get_vendor. delete_invoice is void: QuickBooks does not delete an invoice,
-// and the handler falls back to voidInvoice.
+// and the handler falls back to voidInvoice. delete_vendor is an update:
+// QuickBooks does not delete a vendor, and the handler marks it inactive
+// with updateVendor. Do not add a deleteVendor method spec.
 export const TOOL_META: Record<string, QboToolMeta> = {
   "create_account": { entity: "Account", op: { kind: "create", entity: "Account" } },
   "create_attachable": { entity: "Attachable", op: { kind: "create", entity: "Attachable" } },
@@ -55,7 +57,7 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "delete_sales_receipt": { entity: "SalesReceipt", op: { kind: "delete", entity: "SalesReceipt" } },
   "delete_time_activity": { entity: "TimeActivity", op: { kind: "delete", entity: "TimeActivity" } },
   "delete_transfer": { entity: "Transfer", op: { kind: "delete", entity: "Transfer" } },
-  "delete_vendor": { entity: "Vendor", op: { kind: "delete", entity: "Vendor" } },
+  "delete_vendor": { entity: "Vendor", op: { kind: "update", entity: "Vendor" } },
   "delete_vendor_credit": { entity: "VendorCredit", op: { kind: "delete", entity: "VendorCredit" } },
   "get_account": { entity: "Account", op: { kind: "get", entity: "Account" } },
   "get_aged_payables": { op: { kind: "report", report: "AgedPayables" } },
