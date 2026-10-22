@@ -105,7 +105,7 @@ jest.unstable_mockModule('fs', () => ({
   },
 }));
 
-const { quickbooksClient } = await import('../../../src/clients/quickbooks-client');
+const { quickbooksClient } = await import('../../../src/clients/quickbooks-oauth');
 
 // Polls until the OAuth callback handler has been registered by startOAuthFlow.
 async function untilCallbackRegistered(timeoutMs = 2000): Promise<void> {

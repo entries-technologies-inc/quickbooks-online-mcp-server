@@ -2,7 +2,7 @@ import { createQuickbooksBill } from "../handlers/create-quickbooks-bill.handler
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
-const toolName = "create-bill";
+const toolName = "create_bill";
 const toolDescription = "Create a bill in QuickBooks Online.";
 
 const refSchema = z.object({

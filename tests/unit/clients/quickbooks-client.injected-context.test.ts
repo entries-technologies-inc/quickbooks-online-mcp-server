@@ -35,8 +35,12 @@ jest.unstable_mockModule("fs", () => ({
   },
 }));
 
-const { QuickbooksClient, runWithQuickbooksContext } =
-  await import("../../../src/clients/quickbooks-client");
+const {
+  QuickbooksClient,
+  getInjectedQuickbooksContext,
+  runWithQuickbooksContext,
+} = await import("../../../src/clients/quickbooks-client");
+
 const { getQuickbooksVendor } =
   await import("../../../src/handlers/get-quickbooks-vendor.handler");
 
@@ -50,6 +54,23 @@ function createDeferred() {
 }
 
 describe("runWithQuickbooksContext", () => {
+  it("exposes the injected context only while the callback runs", () => {
+    expect(getInjectedQuickbooksContext()).toBeUndefined();
+    const context = {
+      quickbooks: { marker: "visible" } as never,
+      accessToken: "visible-token",
+      realmId: "visible-realm",
+      isSandbox: false,
+    };
+
+    const seen = runWithQuickbooksContext(context, () =>
+      getInjectedQuickbooksContext(),
+    );
+
+    expect(seen).toBe(context);
+    expect(getInjectedQuickbooksContext()).toBeUndefined();
+  });
+
   it("returns synchronous callback values without losing injected context", () => {
     const quickbooks = { marker: "sync" };
 

@@ -2,7 +2,7 @@ import { deleteQuickbooksBill } from "../handlers/delete-quickbooks-bill.handler
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
-const toolName = "delete-bill";
+const toolName = "delete_bill";
 const toolDescription = "Delete a bill in QuickBooks Online.";
 const toolSchema = z.object({
   bill: z.object({

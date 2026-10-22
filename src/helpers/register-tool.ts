@@ -70,7 +70,7 @@ export function isToolDisabled(toolName: string): boolean {
  * runs or it becomes a real SQL filter.
  *
  * This fork also uses `z.strictObject()` on write tools Entries Core calls
- * (create_invoice, create-vendor, and the other strict schemas). Those already
+ * (create_invoice, create_vendor, and the other strict schemas). Those already
  * reject unknown keys and advertise additionalProperties:false. Loosening them
  * here would change that contract, so strict schemas are registered unchanged.
  * Nested passthrough / z.any() values live under declared keys and are kept.
@@ -167,7 +167,7 @@ export function RegisterTool<T extends z.ZodType>(
       if (warning && result && Array.isArray(result.content)) {
         // Appended, not prepended. Entries Core parses write-tool text for
         // { name, id, operation }, and several tools put that JSON in
-        // content[0] (create-bill, create-vendor). A leading warning would
+        // content[0] (create_bill, create_vendor). A leading warning would
         // move the payload. The original blocks stay in order; the notice
         // follows them, including on error responses.
         result.content.push({ type: "text" as const, text: warning });

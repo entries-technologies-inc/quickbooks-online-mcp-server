@@ -4,7 +4,7 @@
 
 **A comprehensive Model Context Protocol (MCP) server for QuickBooks Online**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Tools](https://img.shields.io/badge/Tools-145-green.svg)](#available-tools)
 [![Entities](https://img.shields.io/badge/Entities-29-orange.svg)](#entities)
 [![Reports](https://img.shields.io/badge/Reports-11-purple.svg)](#reports)
@@ -103,6 +103,8 @@ Add to your Claude Code MCP configuration:
 ```
 
 Set any of the `DISABLE_*` flags to `"true"` to prevent that category of tools from being registered. Read tools (`get_*`, `search_*`) are always available.
+
+This package does not build the standalone server. `npm run build` emits the embed entry (`dist/embed.js`), not `dist/index.js`. There is no package `bin` and no `npm run auth`. The standalone server source is still in the repo; removing it is tracked in ENT-894.
 
 ---
 
@@ -217,7 +219,7 @@ Complete CRUD operations are available for all entity types:
 | `create_vendor` | Create a new vendor |
 | `get_vendor` | Get vendor by ID |
 | `update_vendor` | Update vendor details |
-| `delete_vendor` | Delete a vendor |
+| `delete_vendor` | Mark a vendor inactive |
 | `search_vendors` | Search vendors with filters |
 | `create_bill_payment` | Create a bill payment |
 | `get_bill_payment` | Get bill payment by ID |
@@ -383,7 +385,7 @@ If you only want to read your own company's data, you still need to set up an ap
 3. Get your **Client ID** and **Client Secret** from the app's **Keys & Credentials** page (Development keys)
 4. Create or use a sandbox company under the **Sandbox** top-level menu item in the dev portal
 5. Set `QUICKBOOKS_ENVIRONMENT=sandbox` in your `.env`
-6. Run `npm run auth` to complete the OAuth handshake — your browser will open, you sign in to the sandbox company, tokens are saved to `.env`
+6. Put the sandbox tokens in `.env` (below). This package does not build the standalone server, so it has no `npm run auth` and no `bin`. That follow-up is ENT-894.
 
 ### Production Setup
 
@@ -408,6 +410,60 @@ QUICKBOOKS_ENVIRONMENT=sandbox  # or 'production'
 
 - **`.env` loaded from the wrong directory.** The server resolves `.env` relative to the compiled module, not your shell's CWD. If you launch via Claude Desktop, this matters — make sure you're on current `main`.
 - **Redirect URI mismatch.** The URI you register in the Intuit portal must match **exactly** — protocol, host, port, path. `http://localhost:8000/callback` .
+
+---
+
+## Embed
+
+Library guide: [docs/LIBRARY.md](docs/LIBRARY.md). Upstream sync: [docs/UPSTREAM.md](docs/UPSTREAM.md).
+
+`createQboTools` is exported from `@qboapi/qbo-mcp-server` and from `@qboapi/qbo-mcp-server/embed` (both are `dist/embed.js`). You pass a `Transport`. The library calls that function raw: it does not add retries or a QuickBooks `requestid` unless you wrap the transport yourself.
+
+Two opt-in middlewares are on the same entry.
+
+`withRequestId` sets `query.requestid` on writes (`create`, `update`, `delete`, `void`) when the query does not already have one. The id comes from `crypto.randomUUID`, or from a `generate` function you pass in. Reads (`get`, `query`, `report`) are left untouched, including their query string. An existing `query.requestid` (for example one lifted from the tool body) is kept. The middleware looks at `request.op.kind` and does not read the URL path.
+
+`withRetry` retries `429` and `500`, `502`, `503`, and `504`. The default budget is 3 attempts. The wait is exponential, starting from about 250ms, with jitter, and capped at 10 seconds. If the transport copies response headers onto `QboHttpResponse.headers`, a `Retry-After` value replaces that backoff (still capped). Reads may retry on those statuses and on errors the inner transport throws. A write retries only when `query.requestid` is already present; otherwise the first response, or the first thrown error, is returned.
+
+Apply them in this order:
+
+```ts
+import {
+  createQboTools,
+  withRequestId,
+  withRetry,
+} from "@qboapi/qbo-mcp-server/embed";
+
+const transport = withRequestId(withRetry()(rawTransport));
+const tools = createQboTools({ transport });
+```
+
+`withRequestId` runs once, around `withRetry`, so every retry of a write sends the same `requestid`. QuickBooks uses that value as an idempotency key. `withRetry` will not retry a write until `query.requestid` is already on the request it was given. Putting `withRequestId` inside `withRetry` hides the id from that check, so the write is not retried. Generating a new id on each attempt would also make a replay look like a different write, and QuickBooks could apply it twice.
+
+`npm run build` (`tsc`) emits `dist/embed.js` and `dist/embed.d.ts`, plus declarations for the types that entry re-exports. `package.json` `main` and `exports["."]` use the same `types` / `import` / `default` shape as `exports["./embed"]`. There is no `bin` and no `auth` script. The standalone server source is still in the repo and is not emitted; that follow-up is ENT-894. `prepare` is that same build, so a git SHA install produces the declarations before the package is packed.
+
+Build the catalog once. Pass credentials per call instead of rebuilding all 142 tools when the token changes.
+
+```ts
+import {
+  createQboTools,
+  isWrite,
+} from "@qboapi/qbo-mcp-server/embed";
+
+const tools = createQboTools({ transport }).exclude(isWrite());
+
+const bill = tools.list().find((tool) => tool.name === "get_bill");
+await bill?.run(
+  { id: "1" },
+  { qbo: { accessToken, realmId, isSandbox: true }, app },
+);
+```
+
+`run(params, ctx)` takes the tool params directly. Credentials go on `ctx.qbo`. `ctx.qbo.queryDefaults`, when set, overrides the defaults passed to `createQboTools`. A thrown handler becomes `{ isError: true, content: [{ type: "text", text }] }`, the same shape `register` returns. `.use()` and `wrapRun` wrap the handler `run` calls.
+
+`register(server, { context })` and `handlers({ context })` still accept a `QboEmbedContext` object. `context` may also be `(extra) => QboEmbedContext | Promise<QboEmbedContext>`, called on every invocation. `extra` is the MCP request extra.
+
+`.exclude` accepts a tool name, a list of names, `(tool) => boolean`, or a predicate. `tool.meta.op` is the semantic operation (`get`, `query`, `report`, `create`, `update`, `delete`, `void`). `exclude(isWrite())` drops every write, including void. A function can read `tool.meta` directly, for example `(tool) => tool.meta.op.kind === "report"`.
 
 ---
 
@@ -494,7 +550,7 @@ New tools that do not follow this convention will not be correctly categorised a
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Apache-2.0 License - see [LICENSE](LICENSE) for details.
 
 ---
 

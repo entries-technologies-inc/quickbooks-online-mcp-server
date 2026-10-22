@@ -2,7 +2,7 @@ import { updateQuickbooksBill } from "../handlers/update-quickbooks-bill.handler
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
-const toolName = "update-bill";
+const toolName = "update_bill";
 const toolDescription =
   "Update a bill in QuickBooks Online. Performs a read-merge-write: the current bill " +
   "is fetched and your changes are merged over it, so line-level ClassRef/TaxCodeRef " +

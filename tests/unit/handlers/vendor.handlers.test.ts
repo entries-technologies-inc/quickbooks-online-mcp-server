@@ -132,19 +132,30 @@ describe('Vendor Handlers', () => {
   });
 
   describe('deleteQuickbooksVendor', () => {
-    it('should delete a vendor', async () => {
-      const mockDeleted = { Id: '56', status: 'Deleted' };
-      mockQuickBooksInstance.deleteVendor.mockImplementation((_payload: any, cb: any) => cb(null, mockDeleted));
+    it('should mark a vendor inactive with a sparse update', async () => {
+      const mockInactive = { Id: '56', Active: false, SyncToken: '1' };
+      let captured: any = null;
+      mockQuickBooksInstance.updateVendor.mockImplementation((payload: any, cb: any) => {
+        captured = payload;
+        cb(null, mockInactive);
+      });
 
       const result = await deleteQuickbooksVendor({ Id: '56', SyncToken: '0' });
 
       expect(result.isError).toBe(false);
-      expect(result.result).toEqual(mockDeleted);
+      expect(result.result).toEqual(mockInactive);
+      expect(captured).toEqual({
+        Id: '56',
+        SyncToken: '0',
+        Active: false,
+        sparse: true,
+      });
+      expect(mockQuickBooksInstance.deleteVendor).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
-      mockQuickBooksInstance.deleteVendor.mockImplementation((_payload: any, cb: any) =>
-        cb(new Error('Delete failed'), null)
+      mockQuickBooksInstance.updateVendor.mockImplementation((_payload: any, cb: any) =>
+        cb(new Error('Update failed'), null)
       );
 
       const result = await deleteQuickbooksVendor({ Id: '56', SyncToken: '0' });

@@ -3,7 +3,7 @@ import { qboCurrencyRefSchema } from "../helpers/currency-fields.helper.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
-const toolName = "create-vendor";
+const toolName = "create_vendor";
 const toolDescription = "Create a vendor in QuickBooks Online.";
 const toolSchema = z.strictObject({
   vendor: z.strictObject({

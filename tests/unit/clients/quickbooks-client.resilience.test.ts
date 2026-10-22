@@ -107,7 +107,7 @@ jest.unstable_mockModule('fs', () => ({
   },
 }));
 
-const { QuickbooksClient } = await import('../../../src/clients/quickbooks-client');
+const { QuickbooksClient } = await import('../../../src/clients/quickbooks-oauth');
 
 function makeClient(overrides: Partial<{ environment: string; refreshToken: string }> = {}) {
   return new QuickbooksClient({
