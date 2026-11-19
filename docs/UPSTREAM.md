@@ -19,7 +19,7 @@ The standalone MCP server, OAuth browser flow, and `auth-server` are still in th
 | `src/index.ts` wiring, `src/auth-server.ts`, `src/clients/quickbooks-oauth.ts`, `intuit-oauth` | Ignore. Those are the standalone server. ENT-894 removes them. A new tool that only shows up as an import in upstream `index.ts` is still ported, via the catalog, not via `index.ts`. |
 | `.github/workflows/claude.yml`, `.github/workflows/claude-code-review.yml` | Ignore. We deleted them. |
 | `ci.yml`, `dependency-audit.yml`, `CODEOWNERS` | Apply as-is. They match upstream today. |
-| Security pin or override that does not put `node-quickbooks` back in `dependencies` | Apply as-is. Keep the `follow-redirects` `1.16.1` override. |
+| Security pin or override that does not put `node-quickbooks` back in `dependencies` | Apply as-is. Keep the `follow-redirects` `1.16.3` override, and the `@hono/node-server` `2.1.9`, `hono` `4.13.19`, `body-parser` `2.4.0`, and `fast-uri` `3.1.9` overrides. Do not restore `follow-redirects` `1.16.1`. |
 | Anything that imports `node-quickbooks`, `intuit-oauth`, `dotenv`, or `open` from a file the embed build compiles | Do not apply that import. The embed graph must stay free of those modules. |
 
 Modify/delete conflicts: keep our deletion. If upstream edits a file we removed, resolve the conflict by leaving the file deleted. That is the Claude workflows today. Do not recreate them to get a clean merge.
@@ -41,11 +41,11 @@ Compared with upstream `main` at `31a1dd5`.
 - `license` is `Apache-2.0` (upstream's field was `MIT`). The `LICENSE` file is unchanged from upstream.
 - `main` and `exports["."]` point at the embed build, with the same `types` / `import` / `default` shape as `exports["./embed"]`.
 - `bin` is removed. The `auth` script is removed.
-- `zod` is a peer dependency (`^4`) and a dev dependency (`4.3.6`). Upstream depended on zod 3.
+- `zod` is a peer dependency (`^4`) and a dev dependency (`4.6.7`). Upstream depended on zod 3. Do not restore the `4.3.6` pin.
 - `@modelcontextprotocol/sdk` is `^1.30.0` (upstream was `^1.26.0`).
 - `intuit-oauth` is pinned to `git+https://github.com/arsindelve/oauth-jsclient.git#e3494ff788ed8cc86e71658801e4f8c3065ace47`, not the npm `^4.2.5` package. ENT-894 is what removes this dependency.
 - `node-quickbooks` is a devDependency, for parity tests only. Upstream had it in `dependencies`.
-- `overrides` still pins `node-quickbooks`'s `fast-xml-parser`, `underscore`, and `uuid`, and pins `follow-redirects` to `1.16.1`.
+- `overrides` still pins `node-quickbooks`'s `fast-xml-parser`, `underscore`, and `uuid`. Security overrides pin `follow-redirects` to `1.16.3`, `@hono/node-server` to `2.1.9`, `hono` to `4.13.19`, `body-parser` to `2.4.0`, and `fast-uri` to `3.1.9`. Do not restore `follow-redirects` `1.16.1`.
 
 ### Transport instead of node-quickbooks
 
