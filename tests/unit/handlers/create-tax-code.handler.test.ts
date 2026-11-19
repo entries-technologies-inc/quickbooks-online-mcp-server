@@ -59,6 +59,18 @@ describe('createQuickbooksTaxCode', () => {
     expect(mockQuickBooksInstance.createTaxService).not.toHaveBeenCalled();
   });
 
+  it('formats a synchronous throw from createTaxService', async () => {
+    mockQuickBooksInstance.createTaxService.mockImplementation(() => {
+      throw new Error('sync boom');
+    });
+
+    const result = await createQuickbooksTaxCode(newRate);
+
+    expect(result.isError).toBe(true);
+    expect(result.result).toBeNull();
+    expect(result.error).toContain('sync boom');
+  });
+
   it('passes a QuickBooks callback error through', async () => {
     mockQuickBooksInstance.createTaxService.mockImplementation((payload: any, cb: any) =>
       cb(new Error('Duplicate Name Exists Error'), null)

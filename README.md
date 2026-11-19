@@ -9,7 +9,7 @@
 [![Entities](https://img.shields.io/badge/Entities-29-orange.svg)](#entities)
 [![Reports](https://img.shields.io/badge/Reports-11-purple.svg)](#reports)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](#testing)
-[![Tests](https://img.shields.io/badge/Tests-794-blue.svg)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-795-blue.svg)](#testing)
 
 [Quick Start](#quick-start) | [Available Tools](#available-tools) | [Authentication](#authentication) | [Documentation](#documentation)
 
@@ -482,7 +482,7 @@ npm run build
 npm test
 ```
 
-The test suite includes **794 tests** with **100% code coverage** across all metrics (statements, branches, functions, lines).
+The test suite includes **795 tests** with **100% code coverage** across all metrics (statements, branches, functions, lines).
 
 ### Project Structure
 
@@ -496,7 +496,7 @@ src/
 └── index.ts         # Server entry point
 
 tests/
-├── unit/            # Unit tests (794 tests)
+├── unit/            # Unit tests (795 tests)
 │   ├── handlers/    # Handler tests (15 test files)
 │   └── helpers/     # Helper tests
 └── mocks/           # Test mocks

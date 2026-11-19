@@ -68,7 +68,7 @@ export async function createQuickbooksTaxCode(data: unknown): Promise<ToolRespon
       TaxRateDetails: parsed.data.tax_rate_details.map(mapTaxRateDetail),
     };
 
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       (quickbooks as any).createTaxService(payload, (err: any, created: any) => {
         if (err) resolve({ result: null, isError: true, error: formatError(err) });
         else resolve({ result: created, isError: false, error: null });
