@@ -5,11 +5,11 @@
 **A comprehensive Model Context Protocol (MCP) server for QuickBooks Online**
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Tools](https://img.shields.io/badge/Tools-145-green.svg)](#available-tools)
+[![Tools](https://img.shields.io/badge/Tools-143-green.svg)](#available-tools)
 [![Entities](https://img.shields.io/badge/Entities-29-orange.svg)](#entities)
 [![Reports](https://img.shields.io/badge/Reports-11-purple.svg)](#reports)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](#testing)
-[![Tests](https://img.shields.io/badge/Tests-396-blue.svg)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-794-blue.svg)](#testing)
 
 [Quick Start](#quick-start) | [Available Tools](#available-tools) | [Authentication](#authentication) | [Documentation](#documentation)
 
@@ -23,7 +23,7 @@ This MCP server provides complete QuickBooks Online API integration for Claude C
 
 ### Key Features
 
-- **145 Total Tools** - Complete coverage of QuickBooks Online API
+- **143 Total Tools** - Complete coverage of QuickBooks Online API
 - **29 Entity Types** - Full CRUD operations (Create, Read, Update, Delete, Search)
 - **11 Financial Reports** - Balance Sheet, P&L, Cash Flow, and more
 - **OAuth 2.0 Authentication** - Secure token-based authentication
@@ -140,7 +140,7 @@ Complete CRUD operations are available for all entity types:
 | **Department** | ✅ | ✅ | ✅ | - | ✅ |
 | **Term** | ✅ | ✅ | ✅ | - | ✅ |
 | **Payment Method** | ✅ | ✅ | ✅ | - | ✅ |
-| **Tax Code** | - | ✅ | - | - | ✅ |
+| **Tax Code** | ✅ | ✅ | - | - | ✅ |
 | **Tax Rate** | - | ✅ | - | - | ✅ |
 | **Tax Agency** | - | ✅ | - | - | ✅ |
 | **Company Info** | - | ✅ | ✅ | - | - |
@@ -339,6 +339,7 @@ Complete CRUD operations are available for all entity types:
 
 | Tool | Description |
 |------|-------------|
+| `create_tax_code` | Create a tax code through TaxService |
 | `get_tax_code` | Get tax code by ID |
 | `search_tax_codes` | Search tax codes |
 | `get_tax_rate` | Get tax rate by ID |
@@ -442,7 +443,7 @@ const tools = createQboTools({ transport });
 
 `npm run build` (`tsc`) emits `dist/embed.js` and `dist/embed.d.ts`, plus declarations for the types that entry re-exports. `package.json` `main` and `exports["."]` use the same `types` / `import` / `default` shape as `exports["./embed"]`. There is no `bin` and no `auth` script. The standalone server source is still in the repo and is not emitted; that follow-up is ENT-894. `prepare` is that same build, so a git SHA install produces the declarations before the package is packed.
 
-Build the catalog once. Pass credentials per call instead of rebuilding all 142 tools when the token changes.
+Build the catalog once. Pass credentials per call instead of rebuilding all 143 tools when the token changes.
 
 ```ts
 import {
@@ -481,7 +482,7 @@ npm run build
 npm test
 ```
 
-The test suite includes **396 tests** with **100% code coverage** across all metrics (statements, branches, functions, lines).
+The test suite includes **794 tests** with **100% code coverage** across all metrics (statements, branches, functions, lines).
 
 ### Project Structure
 
@@ -495,7 +496,7 @@ src/
 └── index.ts         # Server entry point
 
 tests/
-├── unit/            # Unit tests (396 tests)
+├── unit/            # Unit tests (794 tests)
 │   ├── handlers/    # Handler tests (15 test files)
 │   └── helpers/     # Helper tests
 └── mocks/           # Test mocks

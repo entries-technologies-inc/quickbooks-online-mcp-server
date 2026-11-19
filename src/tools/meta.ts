@@ -34,6 +34,7 @@ export const TOOL_META: Record<string, QboToolMeta> = {
   "create_purchase_order": { entity: "PurchaseOrder", op: { kind: "create", entity: "PurchaseOrder" } },
   "create_refund_receipt": { entity: "RefundReceipt", op: { kind: "create", entity: "RefundReceipt" } },
   "create_sales_receipt": { entity: "SalesReceipt", op: { kind: "create", entity: "SalesReceipt" } },
+  "create_tax_code": { entity: "TaxCode", op: { kind: "create", entity: "TaxCode" } },
   "create_term": { entity: "Term", op: { kind: "create", entity: "Term" } },
   "create_time_activity": { entity: "TimeActivity", op: { kind: "create", entity: "TimeActivity" } },
   "create_transfer": { entity: "Transfer", op: { kind: "create", entity: "Transfer" } },

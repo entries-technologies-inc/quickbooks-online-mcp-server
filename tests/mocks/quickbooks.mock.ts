@@ -175,6 +175,7 @@ export const mockQuickBooksInstance = {
   findBudgets: jest.fn(),
 
   // TaxCode methods
+  createTaxService: jest.fn(),
   getTaxCode: jest.fn(),
   findTaxCodes: jest.fn(),
 
