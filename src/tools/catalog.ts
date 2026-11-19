@@ -119,6 +119,7 @@ import { GetPaymentMethodTool } from "./get-payment-method.tool.js";
 import { UpdatePaymentMethodTool } from "./update-payment-method.tool.js";
 import { SearchPaymentMethodsTool } from "./search-payment-methods.tool.js";
 import { SearchBudgetsTool } from "./search-budgets.tool.js";
+import { CreateTaxCodeTool } from "./create-tax-code.tool.js";
 import { GetTaxCodeTool } from "./get-tax-code.tool.js";
 import { SearchTaxCodesTool } from "./search-tax-codes.tool.js";
 import { GetTaxRateTool } from "./get-tax-rate.tool.js";
@@ -267,6 +268,7 @@ const registeredTools: ToolDefinition<ZodType>[] = [
   UpdatePaymentMethodTool,
   SearchPaymentMethodsTool,
   SearchBudgetsTool,
+  CreateTaxCodeTool,
   GetTaxCodeTool,
   SearchTaxCodesTool,
   GetTaxRateTool,

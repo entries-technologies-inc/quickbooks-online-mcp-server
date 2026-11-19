@@ -37,7 +37,7 @@ import { createQboTools } from "@qboapi/qbo-mcp-server/embed";
 
 Package: `@qboapi/qbo-mcp-server`. `zod` is a peer dependency. `npm run build` emits `dist/embed.js` and `dist/embed.d.ts`. `package.json` `exports["./embed"]` points `types` at the declarations.
 
-Build one catalog and call it with a fresh context. Do not rebuild the 142 tools when a token changes.
+Build one catalog and call it with a fresh context. Do not rebuild the 143 tools when a token changes.
 
 Catalog tool names are snake_case (`get_bill`, `create_vendor`). Upstream still registers eight bill and vendor tools with hyphens (`create-bill`, `update-bill`, `delete-bill`, `get-bill`, `create-vendor`, `update-vendor`, `delete-vendor`, `get-vendor`). Syncs from upstream must keep those names snake_case. `rename(from, to)` and `rename(fn)` stay available when a caller wants a different name. How this fork differs from upstream, and how to merge it: [docs/UPSTREAM.md](UPSTREAM.md).
 

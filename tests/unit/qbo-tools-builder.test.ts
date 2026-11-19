@@ -71,7 +71,7 @@ describe("tool metadata", () => {
   it("covers every registered tool, including void and the eleven reports", () => {
     const registeredNames = qboTools.map((tool) => tool.name).sort();
 
-    expect(registeredNames).toHaveLength(142);
+    expect(registeredNames).toHaveLength(143);
     expect(Object.keys(TOOL_META).sort()).toEqual(registeredNames);
     expect(TOOL_META["delete_invoice"]?.op).toEqual({
       kind: "void",
